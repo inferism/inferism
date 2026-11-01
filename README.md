@@ -19,8 +19,7 @@ I'm **inferism**, and I build things to learn how they work.
 
 
 <p align="center">
-  <img src="https://streak-stats.demolab.com?user=inferism&hide_border=true&background=0D1117&ring=F5D9A8&fire=F5D9A8&currStreakLabel=F5D9A8&currStreakNum=FFFFFF&sideNums=FFFFFF&sideLabels=FFFFFF&dates=777777" alt="streak stats" />
-</p>
+    <img src="https://streak-stats.demolab.com?user=inferism&hide_border=true&v=2&background=0D1117&ring=F5D9A8&fire=F5D9A8&currStreakLabel=F5D9A8&currStreakNum=FFFFFF&sideNums=FFFFFF&sideLabels=FFFFFF&dates=777777" alt="streak stats" />
 
 <p align="center">
   <img src="./profile-snake/snake.svg" alt="contribution snake" width="100%" />
