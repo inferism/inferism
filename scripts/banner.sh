@@ -10,11 +10,10 @@ query($login: String!) {
     contributionsCollection {
       totalCommitContributions
       totalPullRequestContributions
-      restrictedContributionsCount
       contributionCalendar { totalContributions }
     }
   }
-}' --jq '.data.user.contributionsCollection | [(.contributionCalendar.totalContributions + .restrictedContributionsCount), .totalCommitContributions, .totalPullRequestContributions] | @tsv')
+}' --jq '.data.user.contributionsCollection | [.contributionCalendar.totalContributions, .totalCommitContributions, .totalPullRequestContributions] | @tsv')
 
 fmt() { sed -E ':a;s/^([0-9]+)([0-9]{3})/\1,\2/;ta' <<<"$1"; }
 contribs=$(fmt "$contribs"); commits=$(fmt "$commits"); prs=$(fmt "$prs")
