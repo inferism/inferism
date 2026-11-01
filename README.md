@@ -2,9 +2,20 @@
   <img src="./assets/banner.svg" alt="inferism" width="100%" />
 </p>
 
+---
+
 ### Hi! 👋
 
-I'm a 2nd-year BS Information Technology student building useful web apps and games, learning front-end and back-end by shipping real projects.
+I'm **inferism**, and I build things to learn how they work.
+
+- 🎓 &nbsp;2nd-year **BS Information Technology** student
+- 🌐 &nbsp;Building **useful web apps**
+- 🎮 &nbsp;Creating **games**
+- 🧩 &nbsp;Learning **front-end and back-end** by shipping real projects
+
+> *Ship first, polish later.*
+
+---
 
 ### 🏆 GitHub
 
