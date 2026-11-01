@@ -17,7 +17,6 @@ I'm **inferism**, and I build things to learn how they work.
 
 ---
 
-### 🏆 GitHub
 
 <p align="center">
   <img src="https://streak-stats.demolab.com?user=inferism&hide_border=true&background=0D1117&ring=F5D9A8&fire=F5D9A8&currStreakLabel=F5D9A8&currStreakNum=FFFFFF&sideNums=FFFFFF&sideLabels=FFFFFF&dates=777777" alt="streak stats" />
