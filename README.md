@@ -9,10 +9,6 @@ I'm a 2nd-year BS Information Technology student building useful web apps and ga
 ### 🏆 GitHub
 
 <p align="center">
-  <img src="./profile-3d-contrib/profile-night-view.svg" alt="3D contribution chart" width="100%" />
-</p>
-
-<p align="center">
   <img src="https://streak-stats.demolab.com?user=inferism&hide_border=true&background=0D1117&ring=F5D9A8&fire=F5D9A8&currStreakLabel=F5D9A8&currStreakNum=FFFFFF&sideNums=FFFFFF&sideLabels=FFFFFF&dates=777777" alt="streak stats" />
 </p>
 
