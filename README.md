@@ -6,12 +6,12 @@
 
 ### Hi! 👋
 
-I'm **inferism**, and I build things to learn how they work.
+I'm **inferism**, and I think and I do.
 
 - 🎓 &nbsp;2nd-year **BS Information Technology** student
-- 🌐 &nbsp;Building **useful web apps**
-- 🎮 &nbsp;Creating **games**
-- 🧩 &nbsp;Learning **front-end and back-end** by shipping real projects
+- 🌐 &nbsp;Building **personal projects that I could probably use in the future**
+- 🎮 &nbsp;Creating **web games**
+- 🧩 &nbsp;Learning **front-end and back-end** 
 
 > *Ship first, polish later.*
 
