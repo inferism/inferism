@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Builds assets/banner.svg with live GitHub numbers. Needs: gh, GITHUB_TOKEN, USERNAME.
+set -euo pipefail
+
+user="${USERNAME:?USERNAME not set}"
+
+read -r contribs commits prs < <(gh api graphql -f login="$user" -f query='
+query($login: String!) {
+  user(login: $login) {
+    contributionsCollection {
+      totalCommitContributions
+      totalPullRequestContributions
+      contributionCalendar { totalContributions }
+    }
+  }
+}' --jq '.data.user.contributionsCollection | [.contributionCalendar.totalContributions, .totalCommitContributions, .totalPullRequestContributions] | @tsv')
+
+fmt() { sed -E ':a;s/^([0-9]+)([0-9]{3})/\1,\2/;ta' <<<"$1"; }
+contribs=$(fmt "$contribs"); commits=$(fmt "$commits"); prs=$(fmt "$prs")
+updated=$(date -u +"updated %-d %b %Y")
+
+mkdir -p assets
+cat > assets/banner.svg <<SVG
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="260" viewBox="0 0 1000 260" role="img" aria-label="$user: contributions $contribs, commits $commits, pull requests $prs">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d0c0b"/>
+      <stop offset="1" stop-color="#1a1612"/>
+    </linearGradient>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1" fill="#f5d9a8" fill-opacity="0.07"/>
+    </pattern>
+  </defs>
+  <style>
+    text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace; }
+    .label { fill: #f5d9a8; font-size: 12px; letter-spacing: 4px; }
+    .name  { fill: #ffffff; font-size: 56px; font-weight: 700; }
+    .cur   { fill: #f5d9a8; animation: blink 1.1s steps(1) infinite; }
+    .tag   { fill: #d8cbb6; font-size: 19px; }
+    .sub   { fill: #8c8272; font-size: 13px; }
+    .num   { fill: #ffffff; font-size: 34px; font-weight: 700; }
+    .cap   { fill: #f5d9a8; font-size: 10px; letter-spacing: 2.5px; }
+    .upd   { fill: #6f6657; font-size: 10px; }
+    @keyframes blink { 50% { opacity: 0; } }
+  </style>
+  <rect x="1" y="1" width="998" height="258" rx="18" fill="url(#bg)" stroke="#2c261f" stroke-width="2"/>
+  <rect x="1" y="1" width="998" height="258" rx="18" fill="url(#dots)"/>
+
+  <text x="48" y="64" class="label">HELLO, WORLD</text>
+  <text x="48" y="128" class="name">$user<tspan class="cur">_</tspan></text>
+  <text x="48" y="170" class="tag">Building useful web apps &amp; games.</text>
+  <text x="48" y="198" class="sub">2nd-year BSIT student · learning front-end &amp; back-end by shipping</text>
+
+  <line x1="610" y1="60" x2="610" y2="200" stroke="#2c261f" stroke-width="2"/>
+
+  <g text-anchor="middle">
+    <text x="690" y="125" class="num">$contribs</text>
+    <text x="690" y="150" class="cap">CONTRIBUTIONS</text>
+    <text x="810" y="125" class="num">$commits</text>
+    <text x="810" y="150" class="cap">COMMITS</text>
+    <text x="920" y="125" class="num">$prs</text>
+    <text x="920" y="150" class="cap">PULL REQUESTS</text>
+  </g>
+  <text x="952" y="228" text-anchor="end" class="upd">$updated · last 12 months</text>
+</svg>
+SVG
