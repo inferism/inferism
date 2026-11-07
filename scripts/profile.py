@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 
 USER = os.environ.get("USERNAME", "inferism")
 W = 1000
+SWEEP_S = 7  # seconds per radar rotation; blips are timed against it
 
 QUERY = """
 query($login: String!) {
@@ -241,7 +242,12 @@ def sec_galaxy(cal):
         if c:
             lv = min(4, max(1, math.ceil(4 * c / peak)))
             sz = 2.6 + lv * 1.7
-            out.append(f'<rect x="{x - sz / 2:.1f}" y="{y - sz / 2:.1f}" width="{sz:.1f}" height="{sz:.1f}" fill="#fff" fill-opacity="{0.5 + lv * 0.12:.2f}"/>')
+            # the sweep reaches this blip at angle `hit` (undo the ellipse squash first); flash then
+            hit = math.atan2((y - cy) / 1.12, (x - cx) / 1.95) % math.tau / math.tau * SWEEP_S
+            out.append(
+                f'<rect class="bl" style="animation-delay:{hit - SWEEP_S:.2f}s" x="{x - sz / 2:.1f}" y="{y - sz / 2:.1f}" '
+                f'width="{sz:.1f}" height="{sz:.1f}" fill="#fff" fill-opacity="{0.5 + lv * 0.12:.2f}"/>'
+            )
         else:
             out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="0.8" fill="#fff" fill-opacity="0.16"/>')
     total = sum(d["contributionCount"] for d in days)
@@ -349,11 +355,12 @@ def main():
         '<radialGradient id="gcore"><stop offset="0" stop-color="#fff" stop-opacity="0.4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
         "</defs>\n"
         f"<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} "
-        ".sw { transform-origin: 0 0; animation: sw 7s linear infinite; } @keyframes sw { to { transform: rotate(360deg); } } "
+        f".sw {{ transform-origin: 0 0; animation: sw {SWEEP_S}s linear infinite; }} @keyframes sw {{ to {{ transform: rotate(360deg); }} }} "
+        f".bl {{ opacity: 0.3; animation: bl {SWEEP_S}s linear infinite; }} @keyframes bl {{ 0% {{ opacity: 1; }} 6% {{ opacity: 1; }} 35% {{ opacity: 0.3; }} 100% {{ opacity: 0.3; }} }} "
         ".gl { animation: gl 5s steps(1) infinite; } @keyframes gl { 0%, 90%, 100% { transform: translateX(0); } 92% { transform: translateX(-9px); } 95% { transform: translateX(8px); } } "
         ".blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } "
         ".tw { animation: tw 4s ease-in-out infinite; } @keyframes tw { 50% { opacity: 0.25; } } "
-        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw { animation: none; } }</style>\n"
+        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw, .bl { animation: none; } .bl { opacity: 1; } }</style>\n"
         + cut(1, 1, W - 2, total_h - 2, 28, BG, "none", 0) + "\n"
         + cut(1, 1, W - 2, total_h - 2, 28, "url(#dots)", "none", 0) + "\n"
         + "\n".join(parts) + "\n"
