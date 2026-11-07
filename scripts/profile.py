@@ -8,7 +8,7 @@ import math
 import os
 import random
 import subprocess
-from datetime import date, datetime, timezone
+from datetime import datetime, timezone
 
 USER = os.environ.get("USERNAME", "inferism")
 W = 1000
@@ -39,15 +39,6 @@ STACK = [  # label, chips
     ("testing", ["Firebase Emulators", "tsx tests"]),
     ("automation", ["Python", "GitHub Actions", "GraphQL API", "SVG"]),
 ]
-
-LEVEL = [  # top, left, right
-    ("#1b1b1e", "#131315", "#0f0f11"),
-    ("#3a3a3f", "#2a2a2e", "#212124"),
-    ("#66666c", "#4a4a50", "#3a3a3f"),
-    ("#a6a6ac", "#7a7a80", "#5e5e64"),
-    ("#ffffff", "#c4c4ca", "#8e8e94"),
-]
-
 
 def esc(s):
     return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -146,82 +137,78 @@ def sec_stats(cc):
     return "".join(out), top + h + 50
 
 
-def space(h):
-    """Starfield, nebula and a distant planet behind the skyline."""
+def stars(h):
+    """Plain space backdrop with a light starfield."""
     rnd = random.Random(7)
-    out = [
-        f'<rect x="1" y="0" width="{W - 2}" height="{h}" fill="#050507"/>',
-        f'<ellipse cx="760" cy="{h - 190}" rx="420" ry="210" fill="url(#neb)" opacity="0.9"/>',
-        f'<ellipse cx="170" cy="{h - 330}" rx="260" ry="150" fill="url(#neb)" opacity="0.5"/>',
-    ]
-    for i in range(150):
+    out = [f'<rect x="1" y="0" width="{W - 2}" height="{h}" fill="#050507"/>']
+    for i in range(170):
         x, y = rnd.uniform(14, W - 14), rnd.uniform(10, h - 10)
         if y < 90 and (x < 430 or x > 880):  # keep the heading readable
             continue
         r = rnd.choice([0.5, 0.6, 0.7, 0.9, 1.1])
-        o = rnd.uniform(0.25, 0.75)
-        out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="#fff" fill-opacity="{o:.2f}"/>')
-    for i in range(26):
-        x, y = rnd.uniform(14, W - 14), rnd.uniform(10, h - 10)
-        if y < 90 and (x < 430 or x > 880):
-            continue
-        r = rnd.uniform(1.2, 1.9)
-        tw = ' class="tw" style="animation-delay:-%.1fs"' % rnd.uniform(0, 4) if i % 2 == 0 else ""
-        out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="#fff" fill-opacity="0.9"{tw}/>')
-    for x, y in [(210, 130), (905, 305), (470, 520)]:
-        out.append(
-            f'<g class="tw" style="animation-delay:-{x % 3}s"><circle cx="{x}" cy="{y}" r="9" fill="#fff" fill-opacity="0.08"/>'
-            f'<path d="M{x - 9} {y}H{x + 9}M{x} {y - 9}V{y + 9}" stroke="#fff" stroke-width="1" stroke-opacity="0.8"/>'
-            f'<circle cx="{x}" cy="{y}" r="1.8" fill="#fff"/></g>'
-        )
-    out.append(
-        '<g transform="translate(880 168) rotate(-18)">'
-        '<ellipse rx="62" ry="12" fill="none" stroke="#6b6b72" stroke-width="2" stroke-opacity="0.5"/>'
-        '<circle r="30" fill="url(#planet)"/>'
-        '<path d="M-62 0A62 12 0 0 0 62 0" fill="none" stroke="#a1a1a6" stroke-width="2" stroke-opacity="0.7"/>'
-        "</g>"
-    )
+        tw = f' class="tw" style="animation-delay:-{rnd.uniform(0, 4):.1f}s"' if i % 9 == 0 else ""
+        out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="#fff" fill-opacity="{rnd.uniform(0.2, 0.65):.2f}"{tw}/>')
     return "".join(out)
 
 
-def sec_skyline(cal):
+MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
+def sec_galaxy(cal):
     days = sorted_days(cal)
-    first = date.fromisoformat(days[0]["date"])
-    first_sunday = first.toordinal() - ((first.weekday() + 1) % 7)
+    n = len(days)
     peak = max((d["contributionCount"] for d in days), default=0) or 1
-    dx, dy, ox, oy, m = 15.0, 6.2, 155.0, 195.0, 0.07
-    h_sec = 620
-
-    def p(a, b, z):
-        return f"{ox + (a - b) * dx:.1f},{oy + (a + b) * dy - z:.1f}"
-
-    cells = []
-    for d in days:
-        o = date.fromisoformat(d["date"]).toordinal() - first_sunday
-        gx, gy = o // 7, o % 7
-        n = d["contributionCount"]
-        level = 0 if n == 0 else min(4, max(1, math.ceil(4 * n / peak)))
-        h = 3 if n == 0 else 10 + 110 * math.sqrt(n / peak)
-        cells.append((gx + gy, gx, gy, level, h))
-    cells.sort()
-
-    bld = []
-    for _, gx, gy, level, h in cells:
-        top, left, right = LEVEL[level]
-        a0, a1, b0, b1 = gx + m, gx + 1 - m, gy + m, gy + 1 - m
-        bld.append(
-            f'<path d="M{p(a0, b1, 0)}L{p(a1, b1, 0)}L{p(a1, b1, h)}L{p(a0, b1, h)}Z" fill="{left}"/>'
-            f'<path d="M{p(a1, b1, 0)}L{p(a1, b0, 0)}L{p(a1, b0, h)}L{p(a1, b1, h)}Z" fill="{right}"/>'
-            f'<path d="M{p(a0, b0, h)}L{p(a1, b0, h)}L{p(a1, b1, h)}L{p(a0, b1, h)}Z" fill="{top}"/>'
-        )
+    rnd = random.Random(8)
+    h_gal, cx, cy = 480, W / 2, 278
+    out = [stars(h_gal), heading("contribution-galaxy", "render-galaxy --last 365d  # one star per day", "02")]
+    out.append(f'<ellipse cx="{cx}" cy="{cy}" rx="105" ry="62" fill="url(#gcore)"/>')
+    for _ in range(300):  # faint dust around the arm
+        a, d = rnd.uniform(0, math.tau), math.sqrt(rnd.random()) * 175
+        out.append(f'<circle cx="{cx + math.cos(a) * d * 1.95:.1f}" cy="{cy + math.sin(a) * d * 1.12:.1f}" r="0.6" fill="#fff" fill-opacity="{rnd.uniform(0.08, 0.3):.2f}"/>')
+    for i, d in enumerate(days):
+        t = i / max(1, n - 1)
+        ang, rad = t * math.tau * 3 + 0.6, 14 + t * 150 + (rnd.random() - 0.5) * 7
+        c = d["contributionCount"]
+        x, y = cx + math.cos(ang) * rad * 1.95, cy + math.sin(ang) * rad * 1.12
+        if c:
+            lv = min(4, max(1, math.ceil(4 * c / peak)))
+            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{1.3 + lv * 0.85:.1f}" fill="#fff" fill-opacity="{0.45 + lv * 0.13:.2f}"/>')
+        else:
+            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="0.8" fill="#fff" fill-opacity="0.16"/>')
     total = sum(d["contributionCount"] for d in days)
-    body = (
-        space(h_sec)
-        + heading("contribution-skyline", "render-skyline --last 365d  # one building per day", "02")
-        + f'<g stroke="#050507" stroke-width="0.4" stroke-linejoin="round">' + "".join(bld) + "</g>"
-        f'<text x="28" y="{h_sec - 24}" class="dim" font-size="15">{total:,} contributions · peak {peak}/day · one building per day</text>'
-    )
-    return body, h_sec
+    out.append(f'<text x="28" y="{h_gal - 22}" class="dim" font-size="15">{total:,} contributions · peak {peak}/day · one star per day</text>')
+
+    # monitor: the same year, month by month
+    by_month = {}
+    for d in days:
+        k = d["date"][:7]
+        by_month[k] = by_month.get(k, 0) + d["contributionCount"]
+    keys = sorted(by_month)[-12:]
+    tot = [by_month[k] for k in keys]
+    mx = max(tot) or 1
+    y0 = h_gal
+    out.append(f'<line x1="28" y1="{y0}" x2="{W - 28}" y2="{y0}" stroke="{LINE}" stroke-width="1.5" stroke-dasharray="2 5"/>')
+    out.append(f'<text x="28" y="{y0 + 44}" class="dim" font-size="15">$ htop --contributions</text>')
+    ticks, pitch, bx = 40, 14, 124
+    for r, (k, v) in enumerate(zip(keys, tot)):
+        y = y0 + 96 + r * 32
+        filled = round(v / mx * ticks)
+        out.append(
+            f'<text x="28" y="{y}" class="txt" font-size="18">{MONTHS[int(k[5:7]) - 1]}</text>'
+            f'<text x="{bx - 16}" y="{y}" class="dim" font-size="20">[</text>'
+            + "".join(
+                f'<rect x="{bx + i * pitch}" y="{y - 14}" width="3" height="18" fill="{BRIGHT if i < filled else "#1b1b1e"}"/>'
+                for i in range(ticks)
+            )
+            + f'<text x="{bx + ticks * pitch}" y="{y}" class="dim" font-size="20">]</text>'
+            f'<text x="{W - 190}" y="{y}" text-anchor="end" class="hi" font-size="18" font-weight="700">{round(v / mx * 100)}%</text>'
+            f'<text x="{W - 40}" y="{y}" text-anchor="end" class="txt" font-size="18">{v}</text>'
+        )
+    ye = y0 + 96 + len(keys) * 32 + 14
+    active = sum(1 for d in days if d["contributionCount"])
+    out.append(f'<text x="28" y="{ye + 20}" class="dim" font-size="16">Tasks: {active} active days, {n} total</text>')
+    out.append(f'<text x="28" y="{ye + 46}" class="dim" font-size="16">Uptime: {n} days</text>')
+    return "".join(out), ye + 76
 
 
 def sec_stack():
@@ -260,7 +247,7 @@ def main():
     sections = [
         sec_whoami(),
         sec_stats(cc),
-        sec_skyline(cc["contributionCalendar"]),
+        sec_galaxy(cc["contributionCalendar"]),
         sec_stack(),
         sec_exit(),
     ]
@@ -275,7 +262,7 @@ def main():
 
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{total_h}" viewBox="0 0 {W} {total_h}" role="img" '
-        f'aria-label="{esc(USER)} profile: whoami, stats, contribution skyline, stack">\n'
+        f'aria-label="{esc(USER)} profile: whoami, stats, contribution galaxy, stack">\n'
         "<defs>"
         '<pattern id="dots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#ffffff" fill-opacity="0.05"/></pattern>'
         '<filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/>'
@@ -284,8 +271,7 @@ def main():
         '<feGaussianBlur in="SourceGraphic" stdDeviation="5" result="wide"/>'
         '<feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="tight"/>'
         '<feMerge><feMergeNode in="wide"/><feMergeNode in="tight"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-        '<radialGradient id="neb"><stop offset="0" stop-color="#9a9aa8" stop-opacity="0.22"/><stop offset="1" stop-color="#9a9aa8" stop-opacity="0"/></radialGradient>'
-        '<radialGradient id="planet" cx="0.3" cy="0.3" r="0.8"><stop offset="0" stop-color="#6c6c74"/><stop offset="1" stop-color="#0e0e10"/></radialGradient>'
+        '<radialGradient id="gcore"><stop offset="0" stop-color="#fff" stop-opacity="0.4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
         "</defs>\n"
         f"<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} "
         ".blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } "
