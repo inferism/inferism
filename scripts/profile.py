@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Builds the profile SVGs in assets/: whoami banner, stats, skyline, stack, exit.
+"""Builds assets/profile.svg: one terminal-style container with all profile sections.
 
 Needs: gh CLI + GH_TOKEN, and USERNAME. Set PROFILE_FAKE=<json file> to test offline.
 """
@@ -10,6 +10,7 @@ import subprocess
 from datetime import date, datetime, timezone
 
 USER = os.environ.get("USERNAME", "inferism")
+W = 1000
 
 QUERY = """
 query($login: String!) {
@@ -37,18 +38,22 @@ BG, PANEL, LINE = "#0b0b0c", "#111113", "#2a2a2d"
 TEXT, DIM, BRIGHT = "#d4d4d8", "#85858b", "#ffffff"
 SHADES = ["#ffffff", "#d4d4d8", "#a1a1a6", "#7a7a80", "#55555a", "#3a3a3e"]
 
-STYLE = f"""<style>
-    text {{ font-family: {FONT}; }}
-    .dim {{ fill: {DIM}; }}
-    .txt {{ fill: {TEXT}; }}
-    .hi  {{ fill: {BRIGHT}; }}
-    .blink {{ animation: blink 1.1s steps(1) infinite; }}
-    @keyframes blink {{ 50% {{ opacity: 0; }} }}
-  </style>"""
+STACK = [  # label, chips
+    ("languages", ["TypeScript", "JavaScript", "Python", "HTML", "CSS"]),
+    ("frameworks", ["Next.js", "React"]),
+    ("backend", ["Firebase Auth", "Firestore", "Security Rules"]),
+    ("deploy", ["Vercel"]),
+    ("testing", ["Firebase Emulators", "tsx tests"]),
+    ("automation", ["Python", "GitHub Actions", "GraphQL API", "SVG"]),
+]
 
-DOTS = """<pattern id="dots" width="9" height="9" patternUnits="userSpaceOnUse">
-      <circle cx="2" cy="2" r="1" fill="#ffffff" fill-opacity="0.055"/>
-    </pattern>"""
+LEVEL = [  # top, left, right
+    ("#1b1b1e", "#131315", "#0f0f11"),
+    ("#3a3a3f", "#2a2a2e", "#212124"),
+    ("#66666c", "#4a4a50", "#3a3a3f"),
+    ("#a6a6ac", "#7a7a80", "#5e5e64"),
+    ("#ffffff", "#c4c4ca", "#8e8e94"),
+]
 
 
 def esc(s):
@@ -65,6 +70,13 @@ def fetch():
         check=True, capture_output=True, text=True,
     ).stdout
     return json.loads(out)
+
+
+def sorted_days(cal):
+    return sorted(
+        (d for w in cal["weeks"] for d in w["contributionDays"]),
+        key=lambda d: d["date"],
+    )
 
 
 def streaks(days):
@@ -93,81 +105,39 @@ def languages(repos):
     return [(n, s / total * 100) for n, s in top] if total else []
 
 
-def fill(template, **kw):
-    for k, v in kw.items():
-        template = template.replace(f"@{k}@", str(v))
-    return template
-
-
-def write(path, text):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf8", newline="\n") as f:
-        f.write(text)
-
-
-COMMON = dict(STYLE=STYLE, DOTS=DOTS, BG=BG, PANEL=PANEL, LINE=LINE)
-
-BANNER = """<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="290" viewBox="0 0 1000 290" role="img" aria-label="@USER@, 2nd-year BSIT student">
-  <defs>
-    @DOTS@
-    <filter id="glow" x="-20%" y="-40%" width="140%" height="180%">
-      <feGaussianBlur stdDeviation="5" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-  </defs>
-  @STYLE@
-  <rect x="1" y="1" width="998" height="288" rx="14" fill="@BG@" stroke="@LINE@" stroke-width="2"/>
-  <rect x="1" y="1" width="998" height="288" rx="14" fill="url(#dots)"/>
-  <line x1="1" y1="44" x2="999" y2="44" stroke="@LINE@" stroke-width="2"/>
-  <text x="28" y="28" class="dim" font-size="11" letter-spacing="2.5">SYS://@UPPER@ // NODE:BSIT</text>
-  <circle cx="700" cy="24" r="4" fill="#ffffff" class="blink"/>
-  <text x="972" y="28" text-anchor="end" class="hi" font-size="11" letter-spacing="2.5">ONLINE - ALL SYSTEMS NOMINAL</text>
-
-  <text x="28" y="84" class="dim" font-size="14">$ whoami</text>
-  <text x="28" y="156" class="hi" font-size="72" font-weight="700" letter-spacing="5" filter="url(#glow)">@UPPER@</text>
-  <text x="28" y="196" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> 2nd-year BSIT student</text>
-  <text x="28" y="222" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> building web apps and games, learning front-end and back-end</text>
-  <text x="28" y="248" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> shipping personal projects I could actually use<tspan class="hi blink"> _</tspan></text>
-</svg>
-"""
-
-HEADING = """<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="58" viewBox="0 0 1000 58" role="img" aria-label="@NAME@">
-  @STYLE@
-  <text x="6" y="14" class="dim" font-size="11">$ @CMD@</text>
-  <text x="6" y="42" class="hi" font-size="26" font-weight="700"><tspan class="dim">~/</tspan>@NAME@</text>
-  <text x="994" y="42" text-anchor="end" class="dim" font-size="12">// @NUM@</text>
-  <line x1="6" y1="53" x2="994" y2="53" stroke="@LINE@" stroke-width="2"/>
-</svg>
-"""
-
-CARD = """  <g>
-    <rect x="@X@" y="12" width="170" height="116" rx="6" fill="@PANEL@" stroke="@LINE@" stroke-width="1.5"/>
-    <path d="M@X@ 26V12H@X2@" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <path d="M@XR@ 114V128H@XR2@" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text x="@XT@" y="44" class="dim" font-size="10" letter-spacing="2">@LABEL@</text>
-    <text x="@XT@" y="92" class="hi" font-size="40" font-weight="700">@VALUE@<tspan font-size="18" class="dim">@UNIT@</tspan></text>
-    <text x="@XT@" y="114" class="dim" font-size="11">@SUB@</text>
-  </g>
-"""
-
-STATS = """<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="340" viewBox="0 0 1000 340" role="img" aria-label="@ARIA@">
-  @STYLE@
-@CARDS@  <rect x="25" y="144" width="950" height="170" rx="6" fill="@PANEL@" stroke="@LINE@" stroke-width="1.5"/>
-  <path d="M25 158V144H39" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <path d="M975 300V314H961" fill="none" stroke="#ffffff" stroke-width="2"/>
-  <text x="45" y="174" class="dim" font-size="10" letter-spacing="2">TOP LANGUAGES</text>
-@LANGS@  <text x="975" y="332" text-anchor="end" class="dim" font-size="10">@UPDATED@</text>
-</svg>
-"""
-
-
-def build_stats(cc, repos):
-    cal = cc["contributionCalendar"]
-    days = sorted(
-        (d for w in cal["weeks"] for d in w["contributionDays"]),
-        key=lambda d: d["date"],
+def heading(name, cmd, num):
+    return (
+        f'<text x="28" y="40" class="hi" font-size="24" font-weight="700"><tspan class="dim">~/</tspan>{name}</text>'
+        f'<text x="972" y="40" text-anchor="end" class="dim" font-size="12">// {num}</text>'
+        f'<text x="28" y="62" class="dim" font-size="12">$ {esc(cmd)}</text>'
     )
-    current, longest = streaks(days)
+
+
+def corner(x, y, dx, dy):
+    return f'<path d="M{x} {y + dy}V{y}H{x + dx}" fill="none" stroke="#ffffff" stroke-width="2"/>'
+
+
+def sec_whoami():
+    h = 300
+    body = (
+        f'<text x="28" y="28" class="dim" font-size="11" letter-spacing="2.5">SYS://{USER.upper()} // NODE:BSIT</text>'
+        '<circle cx="700" cy="24" r="4" fill="#ffffff" class="blink"/>'
+        '<text x="972" y="28" text-anchor="end" class="hi" font-size="11" letter-spacing="2.5">ONLINE - ALL SYSTEMS NOMINAL</text>'
+        f'<line x1="1" y1="44" x2="{W - 1}" y2="44" stroke="{LINE}" stroke-width="1.5"/>'
+        '<text x="28" y="76" class="dim" font-size="12">~/boot</text>'
+        '<text x="972" y="76" text-anchor="end" class="dim" font-size="12">// 00</text>'
+        '<text x="28" y="102" class="dim" font-size="14">$ whoami</text>'
+        f'<text x="28" y="176" class="hi" font-size="72" font-weight="700" letter-spacing="5" filter="url(#glow)">{USER.upper()}</text>'
+        '<text x="28" y="218" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> 2nd-year BSIT student</text>'
+        '<text x="28" y="244" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> building web apps and games, learning front-end and back-end</text>'
+        '<text x="28" y="270" class="txt" font-size="16"><tspan class="hi">&gt;&gt;</tspan> shipping personal projects I could actually use<tspan class="hi blink"> _</tspan></text>'
+    )
+    return body, h
+
+
+def sec_stats(cc, repos):
+    cal = cc["contributionCalendar"]
+    current, longest = streaks(sorted_days(cal))
     cards = [
         ("CONTRIBUTIONS", f"{cal['totalContributions']:,}", "", "last 12 months"),
         ("COMMITS", f"{cc['totalCommitContributions']:,}", "", "last 12 months"),
@@ -175,60 +145,58 @@ def build_stats(cc, repos):
         ("CURRENT STREAK", current, "d", "days in a row"),
         ("LONGEST STREAK", longest, "d", "within last 12 months"),
     ]
-    parts = []
+    out = [heading("stats", f"gh stats --user {USER}", "01")]
+    top = 84
     for i, (label, value, unit, sub) in enumerate(cards):
         x = 25 + i * 195
-        parts.append(fill(
-            CARD, X=x, X2=x + 14, XR=x + 170, XR2=x + 156, XT=x + 18,
-            LABEL=label, VALUE=value, UNIT=unit, SUB=sub, **COMMON,
-        ))
+        out.append(
+            f'<rect x="{x}" y="{top}" width="170" height="116" rx="6" fill="{PANEL}" stroke="{LINE}" stroke-width="1.5"/>'
+            + corner(x, top, 14, 14)
+            + f'<path d="M{x + 170} {top + 102}V{top + 116}H{x + 156}" fill="none" stroke="#ffffff" stroke-width="2"/>'
+            f'<text x="{x + 18}" y="{top + 32}" class="dim" font-size="10" letter-spacing="2">{label}</text>'
+            f'<text x="{x + 18}" y="{top + 80}" class="hi" font-size="40" font-weight="700">{value}<tspan font-size="18" class="dim">{unit}</tspan></text>'
+            f'<text x="{x + 18}" y="{top + 102}" class="dim" font-size="11">{sub}</text>'
+        )
 
+    py = top + 132  # languages panel
+    out.append(
+        f'<rect x="25" y="{py}" width="950" height="170" rx="6" fill="{PANEL}" stroke="{LINE}" stroke-width="1.5"/>'
+        + corner(25, py, 14, 14)
+        + f'<path d="M975 {py + 156}V{py + 170}H961" fill="none" stroke="#ffffff" stroke-width="2"/>'
+        f'<text x="45" y="{py + 30}" class="dim" font-size="10" letter-spacing="2">TOP LANGUAGES</text>'
+    )
     langs = languages(repos)
-    lp = []
     if langs:
-        bar_x, bar_w, x = 45, 910, 45.0
         total = sum(p for _, p in langs)
-        lp.append('  <clipPath id="barclip"><rect x="45" y="190" width="910" height="14" rx="3"/></clipPath>\n  <g clip-path="url(#barclip)">\n')
+        bar_y, x = py + 46, 45.0
+        out.append(f'<clipPath id="barclip"><rect x="45" y="{bar_y}" width="910" height="14" rx="3"/></clipPath><g clip-path="url(#barclip)">')
         for i, (_, pct) in enumerate(langs):
-            w = bar_w * pct / total
-            lp.append(f'    <rect x="{x:.1f}" y="190" width="{w + 0.5:.1f}" height="14" fill="{SHADES[i]}"/>\n')
+            w = 910 * pct / total
+            out.append(f'<rect x="{x:.1f}" y="{bar_y}" width="{w + 0.5:.1f}" height="14" fill="{SHADES[i]}"/>')
             x += w
-        lp.append("  </g>\n")
+        out.append("</g>")
         for i, (name, pct) in enumerate(langs):
-            cx = 45 + (i % 3) * 305
-            cy = 244 + (i // 3) * 36
-            lp.append(
-                f'  <rect x="{cx}" y="{cy - 10}" width="12" height="12" rx="2" fill="{SHADES[i]}"/>\n'
-                f'  <text x="{cx + 22}" y="{cy}" class="txt" font-size="15">{esc(name)}</text>\n'
-                f'  <text x="{cx + 270}" y="{cy}" text-anchor="end" class="hi" font-size="15" font-weight="700">{pct:.0f}%</text>\n'
+            cx, cy = 45 + (i % 3) * 305, py + 100 + (i // 3) * 36
+            out.append(
+                f'<rect x="{cx}" y="{cy - 10}" width="12" height="12" rx="2" fill="{SHADES[i]}"/>'
+                f'<text x="{cx + 22}" y="{cy}" class="txt" font-size="15">{esc(name)}</text>'
+                f'<text x="{cx + 270}" y="{cy}" text-anchor="end" class="hi" font-size="15" font-weight="700">{pct:.0f}%</text>'
             )
     else:
-        lp.append('  <text x="45" y="230" class="dim" font-size="14">no language data yet</text>\n')
-
+        out.append(f'<text x="45" y="{py + 90}" class="dim" font-size="14">no language data yet</text>')
     now = datetime.now(timezone.utc)
-    updated = f"updated {now.day} {now.strftime('%b %Y')}"
-    aria = ", ".join(f"{c[0].lower()} {c[1]}{c[2]}" for c in cards)
-    return fill(STATS, CARDS="".join(parts), LANGS="".join(lp), ARIA=esc(aria), UPDATED=updated, **COMMON)
-
-
-LEVEL = [  # top, left, right
-    ("#1b1b1e", "#131315", "#0f0f11"),
-    ("#3a3a3f", "#2a2a2e", "#212124"),
-    ("#66666c", "#4a4a50", "#3a3a3f"),
-    ("#a6a6ac", "#7a7a80", "#5e5e64"),
-    ("#ffffff", "#c4c4ca", "#8e8e94"),
-]
-
-
-def build_skyline(cal):
-    days = sorted(
-        (d for w in cal["weeks"] for d in w["contributionDays"]),
-        key=lambda d: d["date"],
+    out.append(
+        f'<text x="972" y="{py + 196}" text-anchor="end" class="dim" font-size="10">updated {now.day} {now.strftime("%b %Y")}</text>'
     )
+    return "".join(out), py + 210
+
+
+def sec_skyline(cal):
+    days = sorted_days(cal)
     first = date.fromisoformat(days[0]["date"])
     first_sunday = first.toordinal() - ((first.weekday() + 1) % 7)
     peak = max((d["contributionCount"] for d in days), default=0) or 1
-    dx, dy, ox, oy, m = 15.0, 6.2, 155.0, 130.0, 0.07
+    dx, dy, ox, oy, m = 15.0, 6.2, 155.0, 175.0, 0.07
 
     def p(a, b, z):
         return f"{ox + (a - b) * dx:.1f},{oy + (a + b) * dy - z:.1f}"
@@ -243,99 +211,96 @@ def build_skyline(cal):
         cells.append((gx + gy, gx, gy, level, h))
     cells.sort()
 
-    out = []
+    bld = []
     for _, gx, gy, level, h in cells:
         top, left, right = LEVEL[level]
         a0, a1, b0, b1 = gx + m, gx + 1 - m, gy + m, gy + 1 - m
-        out.append(
+        bld.append(
             f'<path d="M{p(a0, b1, 0)}L{p(a1, b1, 0)}L{p(a1, b1, h)}L{p(a0, b1, h)}Z" fill="{left}"/>'
             f'<path d="M{p(a1, b1, 0)}L{p(a1, b0, 0)}L{p(a1, b0, h)}L{p(a1, b1, h)}Z" fill="{right}"/>'
             f'<path d="M{p(a0, b0, h)}L{p(a1, b0, h)}L{p(a1, b1, h)}L{p(a0, b1, h)}Z" fill="{top}"/>'
         )
-
     total = sum(d["contributionCount"] for d in days)
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="540" viewBox="0 0 1000 540" role="img" '
-        f'aria-label="3D skyline of {total} contributions over the last year, peak {peak} in a day">\n'
-        f"  <defs>\n    {DOTS}\n  </defs>\n  {STYLE}\n"
-        f'  <rect x="1" y="1" width="998" height="538" rx="14" fill="{BG}" stroke="{LINE}" stroke-width="2"/>\n'
-        f'  <rect x="1" y="1" width="998" height="538" rx="14" fill="url(#dots)"/>\n'
-        f'  <g stroke="{BG}" stroke-width="0.4" stroke-linejoin="round">\n    '
-        + "\n    ".join(out)
-        + "\n  </g>\n"
-        f'  <text x="28" y="516" class="dim" font-size="11">{total:,} contributions · peak {peak}/day · one building per day</text>\n'
-        "</svg>\n"
+    body = (
+        heading("contribution-skyline", "render-skyline --last 365d  # one building per day", "02")
+        + f'<g stroke="{BG}" stroke-width="0.4" stroke-linejoin="round">' + "".join(bld) + "</g>"
+        f'<text x="28" y="562" class="dim" font-size="11">{total:,} contributions · peak {peak}/day · one building per day</text>'
     )
-    return svg
+    return body, 586
 
 
-STACK_CARD = """  <g>
-    <rect x="@X@" y="@Y@" width="@W@" height="92" rx="6" fill="@PANEL@" stroke="@LINE@" stroke-width="1.5"/>
-    <path d="M@X@ @Y1@V@Y@H@X2@" fill="none" stroke="#ffffff" stroke-width="2"/>
-    <text x="@XT@" y="@YL@" class="dim" font-size="10" letter-spacing="2">@LABEL@</text>
-    <text x="@XT@" y="@YV@" class="hi" font-size="18" font-weight="700">@VALUE@</text>
-    <text x="@XT@" y="@YS@" class="dim" font-size="12">@SUB@</text>
-  </g>
-"""
-
-STACK_ITEMS = [
-    # x, y, w, label, value, sub
-    (25, 12, 950, "FEATURED PROJECT", "Iskolance",
-     "a community for QCU students to share skills and services at student-friendly prices"),
-    (25, 116, 470, "FRONT-END", "Next.js 15 · React 19 · TypeScript", "app router, typed components"),
-    (505, 116, 470, "BACKEND", "Firebase · Auth · Firestore · Storage", "Cloud Functions, security rules"),
-    (25, 220, 470, "DESIGN", "Custom design tokens · HTML & CSS", "screen mockups before the build"),
-    (505, 220, 470, "TESTING", "Firebase Emulators · tsx tests", "rules and payment flows checked locally"),
-    (25, 324, 950, "AUTOMATION", "Python · GitHub Actions · GraphQL API · SVG",
-     "this profile: generated daily, no outside services"),
-]
+def sec_stack():
+    out = [heading("stack", "cat stack.json", "03")]
+    y0 = 90
+    for i, (label, chips) in enumerate(STACK):
+        y = y0 + i * 50
+        out.append(
+            f'<text x="28" y="{y + 19}" class="dim" font-size="14">{label}</text>'
+            f'<line x1="28" y1="{y + 38}" x2="972" y2="{y + 38}" stroke="{LINE}" stroke-width="1.5" stroke-dasharray="2 5"/>'
+        )
+        x = 190.0
+        for c in chips:
+            w = len(c) * 7.9 + 28
+            out.append(
+                f'<rect x="{x:.1f}" y="{y}" width="{w:.1f}" height="28" rx="3" fill="{PANEL}" stroke="#a1a1a6" stroke-width="1.2"/>'
+                f'<text x="{x + w / 2:.1f}" y="{y + 19}" text-anchor="middle" class="hi" font-size="13">{esc(c)}</text>'
+            )
+            x += w + 10
+    return "".join(out), y0 + len(STACK) * 50 + 24
 
 
-def build_stack():
-    parts = []
-    for x, y, w, label, value, sub in STACK_ITEMS:
-        parts.append(fill(
-            STACK_CARD, X=x, Y=y, W=w, Y1=y + 14, X2=x + 14, XT=x + 18,
-            YL=y + 30, YV=y + 58, YS=y + 78,
-            LABEL=label, VALUE=esc(value), SUB=esc(sub), **COMMON,
-        ))
-    return (
-        '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="430" viewBox="0 0 1000 430" role="img" '
-        'aria-label="Tech stack: Next.js, React, TypeScript, Firebase, Python, GitHub Actions">\n'
-        f"  {STYLE}\n" + "".join(parts) + "</svg>\n"
+def sec_exit():
+    body = (
+        '<text x="28" y="44" class="dim" font-size="14">$ <tspan class="hi">exit</tspan></text>'
+        '<text x="28" y="78" class="txt" font-size="14">logout</text>'
+        '<text x="28" y="104" class="txt" font-size="14">[session closed] see you in the next commit<tspan class="hi blink"> _</tspan></text>'
+        f'<text x="972" y="132" text-anchor="end" class="dim" font-size="11">Connection to {USER} closed.</text>'
     )
-
-
-EXIT = """<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="150" viewBox="0 0 1000 150" role="img" aria-label="exit: session closed">
-  <defs>
-    @DOTS@
-  </defs>
-  @STYLE@
-  <rect x="1" y="1" width="998" height="148" rx="14" fill="@BG@" stroke="@LINE@" stroke-width="2"/>
-  <rect x="1" y="1" width="998" height="148" rx="14" fill="url(#dots)"/>
-  <text x="28" y="44" class="dim" font-size="14">$ <tspan class="hi">exit</tspan></text>
-  <text x="28" y="78" class="txt" font-size="14">logout</text>
-  <text x="28" y="102" class="txt" font-size="14">[session closed] see you in the next commit<tspan class="hi blink"> _</tspan></text>
-  <text x="972" y="126" text-anchor="end" class="dim" font-size="11">Connection to @USER@ closed.</text>
-</svg>
-"""
+    return body, 150
 
 
 def main():
     user = fetch()["data"]["user"]
     cc = user["contributionsCollection"]
+    sections = [
+        sec_whoami(),
+        sec_stats(cc, user["repositories"]["nodes"]),
+        sec_skyline(cc["contributionCalendar"]),
+        sec_stack(),
+        sec_exit(),
+    ]
 
-    write("assets/banner.svg", fill(BANNER, USER=USER, UPPER=USER.upper(), **COMMON))
-    write("assets/stats.svg", build_stats(cc, user["repositories"]["nodes"]))
-    write("assets/skyline.svg", build_skyline(cc["contributionCalendar"]))
-    write("assets/stack.svg", build_stack())
-    write("assets/exit.svg", fill(EXIT, USER=USER, **COMMON))
-    for slug, name, cmd, num in [
-        ("stats", "stats", f"gh stats --user {USER}", "01"),
-        ("skyline", "contribution-skyline", "render-skyline --last 365d  # one building per day", "02"),
-        ("stack", "stack", "cat stack.json", "03"),
-    ]:
-        write(f"assets/h-{slug}.svg", fill(HEADING, NAME=name, CMD=esc(cmd), NUM=num, **COMMON))
+    parts, y = [], 0
+    for i, (body, h) in enumerate(sections):
+        parts.append(f'<g transform="translate(0 {y})">{body}</g>')
+        y += h
+        if i < len(sections) - 1:
+            parts.append(f'<line x1="1" y1="{y}" x2="{W - 1}" y2="{y}" stroke="{LINE}" stroke-width="1.5"/>')
+    total_h = y
+
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{total_h}" viewBox="0 0 {W} {total_h}" role="img" '
+        f'aria-label="{esc(USER)} profile: whoami, stats, contribution skyline, stack">\n'
+        '<defs>'
+        '<pattern id="dots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#ffffff" fill-opacity="0.05"/></pattern>'
+        '<filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/>'
+        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
+        '</defs>\n'
+        f'<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} '
+        '.blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } }</style>\n'
+        f'<rect x="1" y="1" width="{W - 2}" height="{total_h - 2}" rx="14" fill="{BG}"/>\n'
+        f'<rect x="1" y="1" width="{W - 2}" height="{total_h - 2}" rx="14" fill="url(#dots)"/>\n'
+        + "\n".join(parts) + "\n"
+        f'<rect x="1" y="1" width="{W - 2}" height="{total_h - 2}" rx="14" fill="none" stroke="{LINE}" stroke-width="2"/>\n'
+        + corner(1, 1, 18, 18)
+        + corner(W - 1, 1, -18, 18)
+        + corner(1, total_h - 1, 18, -18)
+        + corner(W - 1, total_h - 1, -18, -18)
+        + "\n</svg>\n"
+    )
+    os.makedirs("assets", exist_ok=True)
+    with open("assets/profile.svg", "w", encoding="utf8", newline="\n") as f:
+        f.write(svg)
 
 
 if __name__ == "__main__":
