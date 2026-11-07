@@ -1,4 +1,4 @@
-name: GitHub-Profile-3D-Contrib
+name: Profile-Assets
 
 on:
   schedule: # 03:00 JST == 18:00 UTC
@@ -15,17 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Banner
-        run: bash scripts/banner.sh
+      - name: Generate SVGs
+        run: python3 scripts/profile.py
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PROFILE_TOKEN || secrets.GITHUB_TOKEN }}
           USERNAME: ${{ github.repository_owner }}
-
-      - uses: Platane/snk/svg-only@v3
-        with:
-          github_user_name: ${{ github.repository_owner }}
-          outputs: |
-            profile-snake/snake.svg?color_snake=#f5d9a8&color_dots=#161b22,#3a3225,#6b5a3c,#a88f5c,#f5d9a8
 
       - name: Commit & Push
         run: |

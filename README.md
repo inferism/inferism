@@ -1,26 +1,22 @@
 <p align="center">
-  <img src="./assets/banner.svg" alt="inferism" width="100%" />
+  <img src="./assets/banner.svg" alt="inferism, 2nd-year BSIT student" width="100%" />
 </p>
 
----
-
-### Hi! 👋
-
-I'm **inferism**, and I think and I do.
-
-- 🎓 &nbsp;2nd-year **BS Information Technology** student
-- 🌐 &nbsp;Building **personal projects that I could probably use in the future**
-- 🎮 &nbsp;Creating **web games**
-- 🧩 &nbsp;Learning **front-end and back-end** 
-
-> *Ship first, polish later.*
-
----
-
+<p align="center">
+  <img src="./assets/h-stats.svg" alt="stats" width="100%" />
+  <img src="./assets/stats.svg" alt="contributions, commits, pull requests, streaks and top languages" width="100%" />
+</p>
 
 <p align="center">
-    <img src="https://streak-stats.demolab.com?user=inferism&hide_border=true&v=2&background=0D1117&ring=F5D9A8&fire=F5D9A8&currStreakLabel=F5D9A8&currStreakNum=FFFFFF&sideNums=FFFFFF&sideLabels=FFFFFF&dates=777777" alt="streak stats" />
+  <img src="./assets/h-skyline.svg" alt="contribution skyline" width="100%" />
+  <img src="./assets/skyline.svg" alt="3D skyline of contributions over the last year" width="100%" />
+</p>
 
 <p align="center">
-  <img src="./profile-snake/snake.svg" alt="contribution snake" width="100%" />
+  <img src="./assets/h-stack.svg" alt="stack" width="100%" />
+  <img src="./assets/stack.svg" alt="Next.js, React, TypeScript, Firebase, Python, GitHub Actions" width="100%" />
+</p>
+
+<p align="center">
+  <img src="./assets/exit.svg" alt="exit: session closed" width="100%" />
 </p>
