@@ -217,6 +217,19 @@ def sec_galaxy(cal):
     for k in range(-12, 13):
         tl = 7 if k % 4 == 0 else 3
         out.append(f'<line x1="{cx + k * 40}" y1="{cy - tl}" x2="{cx + k * 40}" y2="{cy + tl}" stroke="{EDGE}" stroke-width="1"/>')
+    # rotating sweep: fading wedge behind a bright leading edge, squashed to match the elliptical rings
+    sr, step = 168, 4
+    wedge = ""
+    for i in range(14):
+        a0, a1 = math.radians(-i * step), math.radians(-(i + 1) * step)
+        wedge += (
+            f'<path d="M0 0L{sr * math.cos(a0):.1f} {sr * math.sin(a0):.1f}A{sr} {sr} 0 0 0 {sr * math.cos(a1):.1f} {sr * math.sin(a1):.1f}Z" '
+            f'fill="#fff" fill-opacity="{0.2 * (1 - i / 14) ** 1.6:.3f}"/>'
+        )
+    out.append(
+        f'<g transform="translate({cx} {cy}) scale(1.95 1.12)"><g class="sw">{wedge}'
+        f'<line x1="0" y1="0" x2="{sr}" y2="0" stroke="#fff" stroke-opacity="0.75" stroke-width="0.9" vector-effect="non-scaling-stroke"/></g></g>'
+    )
     for _ in range(300):  # faint dust around the arm
         a, d = rnd.uniform(0, math.tau), math.sqrt(rnd.random()) * 175
         out.append(f'<circle cx="{cx + math.cos(a) * d * 1.95:.1f}" cy="{cy + math.sin(a) * d * 1.12:.1f}" r="0.6" fill="#fff" fill-opacity="{rnd.uniform(0.08, 0.3):.2f}"/>')
@@ -336,9 +349,11 @@ def main():
         '<radialGradient id="gcore"><stop offset="0" stop-color="#fff" stop-opacity="0.4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
         "</defs>\n"
         f"<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} "
+        ".sw { transform-origin: 0 0; animation: sw 7s linear infinite; } @keyframes sw { to { transform: rotate(360deg); } } "
         ".gl { animation: gl 5s steps(1) infinite; } @keyframes gl { 0%, 90%, 100% { transform: translateX(0); } 92% { transform: translateX(-9px); } 95% { transform: translateX(8px); } } "
         ".blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } "
-        ".tw { animation: tw 4s ease-in-out infinite; } @keyframes tw { 50% { opacity: 0.25; } }</style>\n"
+        ".tw { animation: tw 4s ease-in-out infinite; } @keyframes tw { 50% { opacity: 0.25; } } "
+        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw { animation: none; } }</style>\n"
         + cut(1, 1, W - 2, total_h - 2, 28, BG, "none", 0) + "\n"
         + cut(1, 1, W - 2, total_h - 2, 28, "url(#dots)", "none", 0) + "\n"
         + "\n".join(parts) + "\n"
