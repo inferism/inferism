@@ -26,6 +26,9 @@ query($login: String!) {
         weeks { contributionDays { date contributionCount } }
       }
     }
+    repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC) {
+      nodes { languages(first: 10, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name } } } }
+    }
   }
 }"""
 
@@ -83,7 +86,7 @@ def streaks(days):
     return current, longest
 
 
-def cut(x, y, w, h, c, fill, stroke, sw=1.5, tl=False, tr=True, br=False, bl=True):
+def cut(x, y, w, h, c, fill, stroke, sw=1.5, tl=False, tr=True, br=False, bl=True, dash=""):
     """Polygon with chamfered corners (the HUD panel shape)."""
     pts = []
     pts += [(x, y + c), (x + c, y)] if tl else [(x, y)]
@@ -91,7 +94,8 @@ def cut(x, y, w, h, c, fill, stroke, sw=1.5, tl=False, tr=True, br=False, bl=Tru
     pts += [(x + w, y + h - c), (x + w - c, y + h)] if br else [(x + w, y + h)]
     pts += [(x + c, y + h), (x, y + h - c)] if bl else [(x, y + h)]
     d = " ".join(f"{px:g},{py:g}" for px, py in pts)
-    return f'<polygon points="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="miter"/>'
+    da = f' stroke-dasharray="{dash}"' if dash else ""
+    return f'<polygon points="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="miter"{da}/>'
 
 
 def corner(x, y, dx, dy, color=BRIGHT):
@@ -152,7 +156,60 @@ def sec_whoami():
     return body, 352
 
 
-def sec_stats(cc):
+LANG_SHADES = ["#ffffff", "#c1c1c3", "#969699", "#767678", "#5c5c5e", "#414143"]  # rank 1..6, grey ramp from the pfp
+LANG_NAMES = {"Visual Basic .NET": "VB.NET"}
+
+
+def top_languages(repos, n=6):
+    """Public-repo language totals as [(name, share)], plus the share left in 'other'."""
+    totals = {}
+    for r in (repos or {}).get("nodes", []):
+        for e in r["languages"]["edges"]:
+            totals[e["node"]["name"]] = totals.get(e["node"]["name"], 0) + e["size"]
+    whole = sum(totals.values())
+    if not whole:
+        return [], 0.0
+    ranked = sorted(totals.items(), key=lambda kv: -kv[1])
+    top = [(LANG_NAMES.get(k, k), v / whole) for k, v in ranked[:n]]
+    return top, 1 - sum(s for _, s in top)
+
+
+def lang_panel(y, langs, other):
+    """Stacked share bar + legend. Returns (svg, panel height)."""
+    x0, w, h = 25, 950, 150
+    inner, gap = 918, 2
+    avail = inner - gap * (len(langs) - 1 + (1 if other > 0.0005 else 0))
+    out = [
+        cut(x0, y, w, h, 16, PANEL, TEXT, 1.5, dash="6 4")
+        + f'<rect x="{x0}" y="{y}" width="{w}" height="{h}" fill="url(#dots)"/>'
+        + f'<rect x="{x0}" y="{y + 12}" width="4" height="18" fill="#ffffff"/>'
+        + f'<text x="41" y="{y + 26}" class="dim" font-size="12" letter-spacing="1.5">TOP LANGUAGES</text>'
+        + f'<text x="959" y="{y + 26}" text-anchor="end" font-size="12" fill="{EDGE}">public repos · by code size</text>'
+    ]
+    x = 41.0
+    segs = [(s, LANG_SHADES[i]) for i, (_, s) in enumerate(langs)]
+    if other > 0.0005:
+        segs.append((other, "#2b2b2d"))
+    for s, shade in segs:
+        sw = s * avail
+        out.append(f'<rect x="{x:.1f}" y="{y + 40}" width="{sw:.1f}" height="20" fill="{shade}"/>')
+        x += sw + gap
+    out.append(f'<line x1="41" y1="{y + 66}" x2="959" y2="{y + 66}" stroke="{EDGE}" stroke-width="1"/>')
+    for k in range(5):
+        out.append(f'<rect x="{41 + k * 229.25:.1f}" y="{y + 64}" width="1" height="5" fill="{EDGE}"/>')
+    for i, (name, s) in enumerate(langs):
+        lx = 41 + i * 153
+        out.append(
+            f'<rect x="{lx}" y="{y + 86}" width="10" height="10" fill="{LANG_SHADES[i]}"/>'
+            f'<text x="{lx + 17}" y="{y + 96}" class="hi" font-size="16">{esc(name)}</text>'
+            f'<text x="{lx + 17}" y="{y + 120}" class="dim" font-size="14">{s * 100:.1f}%</text>'
+        )
+    if other > 0.0005:
+        out.append(f'<text x="959" y="{y + 120}" text-anchor="end" font-size="13" fill="{EDGE}">other {other * 100:.1f}%</text>')
+    return "".join(out), h
+
+
+def sec_stats(cc, repos=None):
     cal = cc["contributionCalendar"]
     current, longest = streaks(sorted_days(cal))
     cards = [
@@ -179,11 +236,17 @@ def sec_stats(cc):
             f'<text x="{x + 16}" y="{top + 106}" class="dim" font-size="13">{sub}</text>'
             + ruler
         )
+    end = top + h
+    langs, other = top_languages(repos)
+    if langs:
+        panel, ph = lang_panel(end + 20, langs, other)
+        out.append(panel)
+        end += 20 + ph
     now = datetime.now(timezone.utc)
     out.append(
-        f'<text x="972" y="{top + h + 32}" text-anchor="end" class="dim" font-size="13">updated {now.day} {now.strftime("%b %Y")}</text>'
+        f'<text x="972" y="{end + 28}" text-anchor="end" class="dim" font-size="13">updated {now.day} {now.strftime("%b %Y")}</text>'
     )
-    return "".join(out), top + h + 50
+    return "".join(out), end + 46
 
 
 def stars(h):
@@ -323,7 +386,7 @@ def main():
     cc = user["contributionsCollection"]
     sections = [
         sec_whoami(),
-        sec_stats(cc),
+        sec_stats(cc, user.get("repositories")),
         sec_galaxy(cc["contributionCalendar"]),
         sec_stack(),
         sec_exit(),
