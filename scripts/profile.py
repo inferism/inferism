@@ -9,6 +9,7 @@ import os
 import base64
 import random
 import subprocess
+import textwrap
 from datetime import datetime, timezone
 
 USER = os.environ.get("USERNAME", "inferism")
@@ -28,6 +29,9 @@ query($login: String!) {
     }
     repositories(first: 100, ownerAffiliations: OWNER, isFork: false, privacy: PUBLIC) {
       nodes { languages(first: 10, orderBy: {field: SIZE, direction: DESC}) { edges { size node { name } } } }
+    }
+    pinnedItems(first: 6, types: REPOSITORY) {
+      nodes { ... on Repository { name description isPrivate stargazerCount pushedAt primaryLanguage { name } } }
     }
   }
 }"""
@@ -349,8 +353,64 @@ def sec_galaxy(cal):
     return "".join(out), ye + 76
 
 
-def sec_stack():
-    out = [heading("stack", "cat stack.json", "03")]
+def sec_projects(pinned):
+    """Pinned public repos as stat-card-style tiles, two per row. Returns None when there is nothing to show."""
+    repos = [r for r in (pinned or {}).get("nodes", []) if r and r.get("name") and not r.get("isPrivate")][:6]
+    if not repos:
+        return None
+    out = [heading("projects", f"gh pinned --user {USER}", "03")]
+    top, h, cw, gap = 100, 140, 462, 26  # two columns of stat-card-style tiles
+    for i, r in enumerate(repos):
+        x, y = 25 + (i % 2) * (cw + gap), top + (i // 2) * (h + 20)
+        desc = textwrap.wrap(r.get("description") or "", 52, max_lines=2, placeholder="…")
+        lang = ((r.get("primaryLanguage") or {}).get("name") or "REPO").upper()
+        pushed = datetime.fromisoformat(r["pushedAt"].replace("Z", "+00:00"))
+        meta = f"pushed {pushed.day} {pushed.strftime('%b %Y')}" + (f" · ★ {r['stargazerCount']}" if r.get("stargazerCount") else "")
+        age = (datetime.now(timezone.utc) - pushed).days  # recency drives the status readout + signal bars
+        status = "ACTIVE" if age <= 3 else "IDLE" if age <= 30 else "DORMANT"
+        bars_on = 5 if age <= 1 else 4 if age <= 3 else 3 if age <= 7 else 2 if age <= 30 else 1
+        blink = ' class="blink"' if status == "ACTIVE" else ""
+        uid = f"0x{sum(ord(c) * (k + 1) for k, c in enumerate(r['name'])) % 0xFFFF:04X}"
+        poly = f"{x},{y} {x + cw - 16},{y} {x + cw},{y + 16} {x + cw},{y + h} {x + 16},{y + h} {x},{y + h - 16}"
+        ruler = "".join(
+            f'<line x1="{x + 16 + k * 10}" y1="{y + h - 9}" x2="{x + 16 + k * 10}" y2="{y + h - (4 if k % 3 == 0 else 6)}" stroke="{EDGE}" stroke-width="1"/>'
+            for k in range((cw - 32) // 10 + 1)
+        )
+        sig = "".join(
+            f'<rect x="{x + cw - 56 + k * 6}" y="{y + 62 - (4 + k * 2)}" width="4" height="{4 + k * 2}" fill="{BRIGHT if k < bars_on else LINE}"/>'
+            for k in range(5)
+        )
+        name = esc(r["name"])
+        out.append(
+            f'<clipPath id="pc{i}"><polygon points="{poly}"/></clipPath>'
+            f'<clipPath id="pg{i}"><rect x="{x}" y="{y + 46}" width="{cw}" height="5"/><rect x="{x}" y="{y + 58}" width="{cw}" height="3"/></clipPath>'
+            + cut(x, y, cw, h, 16, PANEL, EDGE)
+            + f'<rect x="{x}" y="{y}" width="{cw}" height="{h}" fill="url(#dots)"/>'
+            + f'<g clip-path="url(#pc{i})"><g class="pscan" style="animation-delay:-{i * 1.4:.1f}s">'
+            f'<rect x="{x}" y="{y - 14}" width="{cw}" height="14" fill="#fff" fill-opacity="0.05"/>'
+            f'<rect x="{x}" y="{y}" width="{cw}" height="2" fill="#fff" fill-opacity="0.22"/></g></g>'
+            + corner(x - 5, y - 5, 16, 16)
+            + corner(x + cw + 5, y + h + 5, -16, -16)
+            + f'<rect x="{x}" y="{y + 12}" width="4" height="18" fill="#ffffff"/>'
+            + f'<rect x="{x + 16}" y="{y + 19}" width="22" height="9" fill="url(#hz)"/>'
+            + f'<text x="{x + 46}" y="{y + 28}" class="dim" font-size="12" letter-spacing="1.5">PRJ-{i + 1:02d} // {esc(lang)}</text>'
+            + f'<text x="{x + cw - 28}" y="{y + 28}" text-anchor="end" class="dim" font-size="12">{meta}</text>'
+            + f'<text x="{x + 19}" y="{y + 72}" font-size="32" font-weight="700" fill="{EDGE}" opacity="0.8">{name}</text>'
+            + f'<text x="{x + 16}" y="{y + 70}" class="hi" font-size="32" font-weight="700" filter="url(#ng)">{name}</text>'
+            + f'<g clip-path="url(#pg{i})"><text class="gl" style="animation-delay:-{i * 1.7:.1f}s" x="{x + 16}" y="{y + 70}" font-size="32" font-weight="700" fill="{TEXT}">{name}</text></g>'
+            + sig
+            + f'<rect x="{x + cw - 64 - len(status) * 9.3 - 15:.1f}" y="{y + 53}" width="7" height="7" fill="#ffffff"{blink}/>'
+            + f'<text x="{x + cw - 64}" y="{y + 62}" text-anchor="end" class="{"hi" if status != "DORMANT" else "dim"}" font-size="13" letter-spacing="1.5">{status}</text>'
+            + "".join(f'<text x="{x + 16}" y="{y + 96 + k * 18}" class="dim" font-size="13">{esc(line)}</text>' for k, line in enumerate(desc))
+            + f'<text x="{x + cw - 28}" y="{y + h - 16}" text-anchor="end" font-size="11" letter-spacing="1" fill="{EDGE}">ID {uid}</text>'
+            + ruler
+        )
+    rows = (len(repos) + 1) // 2
+    return "".join(out), top + (rows - 1) * (h + 20) + h + 24
+
+
+def sec_stack(num="03"):
+    out = [heading("stack", "cat stack.json", num)]
     y0, pitch = 104, 60
     for i, (label, chips) in enumerate(STACK):
         y = y0 + i * pitch
@@ -384,11 +444,13 @@ def sec_exit():
 def main():
     user = fetch()["data"]["user"]
     cc = user["contributionsCollection"]
+    projects = sec_projects(user.get("pinnedItems"))
     sections = [
         sec_whoami(),
         sec_stats(cc, user.get("repositories")),
         sec_galaxy(cc["contributionCalendar"]),
-        sec_stack(),
+        *([projects] if projects else []),
+        sec_stack("04" if projects else "03"),
         sec_exit(),
     ]
 
@@ -420,10 +482,11 @@ def main():
         f"<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} "
         f".sw {{ transform-origin: 0 0; animation: sw {SWEEP_S}s linear infinite; }} @keyframes sw {{ to {{ transform: rotate(360deg); }} }} "
         f".bl {{ opacity: 0.3; animation: bl {SWEEP_S}s linear infinite; }} @keyframes bl {{ 0% {{ opacity: 1; }} 6% {{ opacity: 1; }} 35% {{ opacity: 0.3; }} 100% {{ opacity: 0.3; }} }} "
+        ".pscan { animation: pscan 4.8s linear infinite; } @keyframes pscan { to { transform: translateY(156px); } } "
         ".gl { animation: gl 5s steps(1) infinite; } @keyframes gl { 0%, 90%, 100% { transform: translateX(0); } 92% { transform: translateX(-9px); } 95% { transform: translateX(8px); } } "
         ".blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } "
         ".tw { animation: tw 4s ease-in-out infinite; } @keyframes tw { 50% { opacity: 0.25; } } "
-        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw, .bl { animation: none; } .bl { opacity: 1; } }</style>\n"
+        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw, .bl, .pscan { animation: none; } .bl { opacity: 1; } }</style>\n"
         + cut(1, 1, W - 2, total_h - 2, 28, BG, "none", 0) + "\n"
         + cut(1, 1, W - 2, total_h - 2, 28, "url(#dots)", "none", 0) + "\n"
         + "\n".join(parts) + "\n"
