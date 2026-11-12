@@ -124,8 +124,8 @@ def tile(x, y, w, h):
 
 
 def label(x, y, s, right=None):
-    r = t(x, y, s, 11, G3, "bold", ls=2.5)
-    return r + (t(right[0], y, right[1], 11, G2, anchor="end", ls=2) if right else "")
+    r = t(x, y, s, 13, G4, "bold", ls=2.2)
+    return r + (t(right[0], y, right[1], 13, G3, anchor="end", ls=1.5) if right else "")
 
 
 def chip_w(s, px=12):
@@ -164,20 +164,20 @@ def hero(now):
     o.append(f'<g clip-path="url(#hero)"><g fill="#fff" fill-opacity="0.085">{"".join(dots)}</g>'
              '<circle cx="640" cy="30" r="320" fill="url(#glow)"/></g>')
     pill = f"Shipping in public · {now:%b %Y}"
-    pw = len(pill) * 6.6 + 44
+    pw = len(pill) * 7.3 + 44
     o.append(R(52, 52, pw, 28, "#141414", 'rx="14" stroke="#2e2e2e"'))
     o.append(f'<circle cx="69" cy="66" r="7" fill="{P}" fill-opacity="0.15" class="pulse"/><circle cx="69" cy="66" r="3.5" fill="{P}"/>')
-    o.append(t(82, 70.5, pill, 12, G5))
+    o.append(t(82, 71, pill, 13, G5))
     size = min(110, 560 / (len(USER) * 0.56))
     o.append(t(46, 192, USER, round(size), P, "bold", ls=-5.5))
     for i, ln in enumerate(textwrap.wrap(BIO, 50)[:2]):
         o.append(t(52, 236 + i * 26, ln, 19, G4))
     x = 52
     for s in TAGS:
-        w = chip_w(s)
-        o.append(R(x, 284, w, 26, "none", f'rx="13" stroke="{G1}"') + t(x + w / 2, 301.5, s, 12, G5, anchor="middle"))
+        w = chip_w(s, 14)
+        o.append(R(x, 282, w, 30, "none", f'rx="15" stroke="{G2}"') + t(x + w / 2, 302, s, 14, G5, anchor="middle"))
         x += w + 8
-    o.append(t(616, 301.5, f"github.com/{USER} ↗", 12.5, G2, anchor="end", font=MONO))
+    o.append(t(616, 302, f"github.com/{USER} ↗", 14, G3, anchor="end", font=MONO))
     return "".join(o)
 
 
@@ -191,8 +191,8 @@ def headline(total, weekly, months):
         chip = f"{'▲' if d >= 0 else '▼'} {abs(d)}% vs {pm}"
     else:
         chip = f"▲ {cc} this month" if cc else "quiet month"
-    cw = len(chip) * 6.9 + 26
-    o.append(R(688, 186, cw, 24, "url(#chipP)", 'rx="12"') + t(688 + cw / 2, 202.5, chip, 11.5, K, "bold", "middle"))
+    cw = len(chip) * 7.9 + 28
+    o.append(R(688, 184, cw, 28, "url(#chipP)", 'rx="14"') + t(688 + cw / 2, 203, chip, 13, K, "bold", "middle"))
     mx = max(weekly) or 1
     n = len(weekly)
     pts = [(661 + i * 314 / max(n - 1, 1), 322 - 92 * (v / mx) ** 0.7) for i, v in enumerate(weekly)]
@@ -210,7 +210,7 @@ def stat_row(total, commits, prs, current, longest, peak, last30):
     def head(x, lab, num, foot):
         s = tile(x, 340, 226, 170) + label(x + 24, 376, lab)
         s += t(x + 21, 456, f"{num:,}", 68 if num < 1000 else 56, P, "bold", ls=-3)
-        return s + (t(x + 24, 488, foot, 12.5, G2) if foot else "")
+        return s + (t(x + 24, 490, foot, 15, G4) if foot else "")
 
     pct = commits / total if total else 0
     o.append(head(24, "COMMITS", commits, f"{round(100 * pct)}% of all activity"))
@@ -227,7 +227,7 @@ def stat_row(total, commits, prs, current, longest, peak, last30):
              f'<path d="M{gx} {gy + 5}V{gy + 37}"/><path d="M{gx} {gy + 6}C{gx} {gy + 20} {gx + 26} {gy + 8} {gx + 26} {gy + 19}"/></g>')
 
     o.append(head(508, "DAY STREAK", current, None if current else "no streak yet"))
-    o.append(t(710, 376, f"longest {longest}", 11, G2, anchor="end"))
+    o.append(t(710, 376, f"longest {longest}", 13, G4, anchor="end"))
     bars = min(current, 19)
     for k in range(bars):
         last = k == bars - 1
@@ -260,8 +260,8 @@ def heatmap(cal, days, active):
     mx = max(d["contributionCount"] for d in days) or 1
     first, last = date.fromisoformat(days[0]["date"]), date.fromisoformat(days[-1]["date"])
     o = [tile(24, 526, 952, 240), t(52, 566, "Contribution activity", 18, P, "bold"),
-         t(52, 586, f"{first:%b %Y} – {last:%b %Y} · {active} active days", 12, G2),
-         t(840, 566, "Less", 11, G2, anchor="end"), t(932, 566, "More", 11, G2)]
+         t(52, 586, f"{first:%b %Y} – {last:%b %Y} · {active} active days", 14, G4),
+         t(838, 567, "Less", 13, G3, anchor="end"), t(932, 567, "More", 13, G3)]
     o += [R(848 + k * 16, 556, 11, 11, c, 'rx="2.5"') for k, c in enumerate(HEAT)]
     seen, last_x = set(), -99
     for w, wk in enumerate(weeks):
@@ -273,42 +273,42 @@ def heatmap(cal, days, active):
             o.append(R(x, y, cell, cell, HEAT[level(d["contributionCount"], mx)], 'rx="3"' + (' class="pulse"' if today else "")))
             if dd.day <= 7 and (dd.year, dd.month) not in seen and w > 0:
                 seen.add((dd.year, dd.month))
-                if x - last_x > 34:
-                    o.append(t(x, 744, f"{dd:%b}", 11, G2))
+                if x - last_x > 40:
+                    o.append(t(x, 746, f"{dd:%b}", 13, G4))
                     last_x = x
     return "".join(o)
 
 
 def languages(y, h, langs, other):
-    o = [tile(24, y, 360, h), t(52, y + 40, "Languages", 18, P, "bold"), t(356, y + 40, "by bytes", 13, G3, anchor="end")]
+    o = [tile(24, y, 360, h), t(52, y + 40, "Languages", 18, P, "bold"), t(356, y + 40, "by bytes", 14, G4, anchor="end")]
     parts = [(s, LANG_TONES[i]) for i, (_, s) in enumerate(langs)]
     if other > 0.0005:
         parts.append((other, "#2a2a2a"))
     cy = y + 60 + (h - 60) / 2
     o.append(ring(118, cy, 44, 64, parts))
-    o.append(t(118, cy + 6, len(langs), 24, P, "bold", "middle") + t(118, cy + 22, "langs", 10, G2, anchor="middle"))
+    o.append(t(118, cy + 6, len(langs), 24, P, "bold", "middle") + t(118, cy + 22, "langs", 12, G3, anchor="middle"))
     rows = [(n, s, LANG_TONES[i]) for i, (n, s) in enumerate(langs)]
     if other > 0.0005:
         rows.append(("Other", other, "#2a2a2a"))
-    y0 = cy - (len(rows) - 1) * 12.5 + 4
+    y0 = cy - (len(rows) - 1) * 14 + 5
     for i, (n, s, col) in enumerate(rows):
-        yy = y0 + i * 25
-        o.append(R(204, yy - 9, 8, 8, col, 'rx="2"') + t(220, yy, n, 13.5, G5) + t(356, yy, f"{100 * s:.1f}%", 12, G4, anchor="end", font=MONO))
+        yy = y0 + i * 28
+        o.append(R(200, yy - 10, 10, 10, col, 'rx="2.5"') + t(218, yy, n, 16, G5) + t(358, yy, f"{100 * s:.1f}%", 14, G4, anchor="end", font=MONO))
     return "".join(o)
 
 
 def stack(y, h, x0=400):
-    o = [tile(x0, y, 976 - x0, h), t(x0 + 28, y + 40, "Stack", 18, P, "bold"), t(948, y + 40, "daily drivers", 13, G3, anchor="end")]
+    o = [tile(x0, y, 976 - x0, h), t(x0 + 28, y + 40, "Stack", 18, P, "bold"), t(948, y + 40, "daily drivers", 14, G4, anchor="end")]
     for i, (cat, items) in enumerate(STACK):
-        yy = y + 64 + i * 40
-        o.append(t(x0 + 28, yy + 19, cat, 11, G3, font=MONO))
+        yy = y + 64 + i * 44
+        o.append(t(x0 + 28, yy + 20, cat, 13, G4, font=MONO))
         cx = x0 + 120
         for k, it in enumerate(items):
-            cw = chip_w(it)
+            cw = chip_w(it, 14)
             if k == 0:
-                o.append(R(cx, yy, cw, 28, "url(#chipP)", 'rx="14"') + t(cx + cw / 2, yy + 18.5, it, 12, K, "bold", "middle"))
+                o.append(R(cx, yy, cw, 30, "url(#chipP)", 'rx="15"') + t(cx + cw / 2, yy + 20, it, 14, K, "bold", "middle"))
             else:
-                o.append(R(cx, yy, cw, 28, "#171717", 'rx="14" stroke="#2e2e2e"') + t(cx + cw / 2, yy + 18.5, it, 12, G5, anchor="middle"))
+                o.append(R(cx, yy, cw, 30, "#171717", 'rx="15" stroke="#333"') + t(cx + cw / 2, yy + 20, it, 14, G5, anchor="middle"))
             cx += cw + 8
     return "".join(o)
 
@@ -330,7 +330,7 @@ def projects(y, pinned, now):
     f, rest = repos[0], repos[1:]
     fw = 468 if rest else 952
     o.append(tile(24, y, fw, 300))
-    o.append(R(52, y + 28, 92, 26, "url(#chipP)", 'rx="13"') + t(98, y + 45.5, "FEATURED", 11, K, "bold", "middle", ls=1.5))
+    o.append(R(52, y + 28, 100, 28, "url(#chipP)", 'rx="14"') + t(102, y + 46.5, "FEATURED", 12, K, "bold", "middle", ls=1.5))
     wx, wy = 24 + fw - 202, y + 24  # tiny editor window
     o.append(R(wx, wy, 178, 104, "#0b0b0b", 'rx="10" stroke="#2a2a2a"') + R(wx, wy, 178, 22, "#151515", 'rx="10"') + R(wx, wy + 12, 178, 10, "#151515"))
     o += [f'<circle cx="{wx + 13 + k * 11}" cy="{wy + 11}" r="3" fill="{G1}"/>' for k in range(3)]
@@ -344,14 +344,14 @@ def projects(y, pinned, now):
     nsize = min(54, 400 / max(len(f["name"]) * 0.55, 1))
     o.append(t(50, y + 130, f["name"], round(nsize), P, "bold", ls=-1.5))
     for i, ln in enumerate(textwrap.wrap(f["desc"], 40 if rest else 80, max_lines=2, placeholder="…")):
-        o.append(t(52, y + 166 + i * 25, ln, 17, G4))
+        o.append(t(52, y + 166 + i * 25, ln, 17, G5))
     o.append(R(24, y + 242, fw, 1, "#1e1e1e"))
     if f["lang"]:
-        o.append(f'<circle cx="58" cy="{y + 271}" r="5" fill="{G5}"/>' + t(70, y + 276, f["lang"], 13, G5))
-    o.append(t(180, y + 276, f"★ {f['stars']}  ·  {f['pushed']}", 13, G4))
+        o.append(f'<circle cx="58" cy="{y + 271}" r="5" fill="{G5}"/>' + t(70, y + 276, f["lang"], 15, G5))
+    o.append(t(180, y + 276, f"★ {f['stars']}  ·  {f['pushed']}", 15, G4))
     act = f["status"] == "ACTIVE"
     o.append((f'<circle cx="{24 + fw - 100}" cy="{y + 271}" r="3.5" fill="{P}" class="pulse"/>' if act else "")
-             + t(24 + fw - 28, y + 276, f["status"], 12, P if act else G2, anchor="end", font=MONO, ls=1.5))
+             + t(24 + fw - 28, y + 276, f["status"], 14, P if act else G3, anchor="end", font=MONO, ls=1.5))
 
     # the rest fill the right half: 2 columns, rows share the 300px height
     k = len(rest)
@@ -365,17 +365,17 @@ def projects(y, pinned, now):
         ty = y + row * (th + 16)
         a = r["status"] == "ACTIVE"
         o.append(tile(x, ty, tw, th))
-        o.append(t(x + 22, ty + 40, r["name"], 19 if len(r["name"]) <= 16 else 16, P if a else G5, "bold"))
-        o.append(t(x + tw - 22, ty + 39, f"0{i + 2}", 11, G1, anchor="end", font=MONO))
-        nl = max(1, min(3, int((th - 118) // 18) + 1))  # keep clear of the language row
-        for j, ln in enumerate(textwrap.wrap(r["desc"], 30 if not span else 64, max_lines=nl, placeholder="…")):
-            o.append(t(x + 22, ty + 66 + j * 18, ln, 12.5, G3))
+        o.append(t(x + 22, ty + 40, r["name"], 21 if len(r["name"]) <= 15 else 18, P if a else G5, "bold"))
+        o.append(t(x + tw - 22, ty + 39, f"0{i + 2}", 12, G2, anchor="end", font=MONO))
+        nl = max(1, min(3, int((th - 110) // 20) + 1))  # keep clear of the language row
+        for j, ln in enumerate(textwrap.wrap(r["desc"], 25 if not span else 54, max_lines=nl, placeholder="…")):
+            o.append(t(x + 22, ty + 68 + j * 20, ln, 15, G4))
         if r["lang"]:
-            o.append(f'<circle cx="{x + 26}" cy="{ty + th - 25}" r="4" fill="{G4}"/>' + t(x + 36, ty + th - 20.5, r["lang"], 12, G4))
+            o.append(f'<circle cx="{x + 26}" cy="{ty + th - 25}" r="4" fill="{G4}"/>' + t(x + 36, ty + th - 20, r["lang"], 14, G5))
         if a:
-            o.append(R(x + tw - 80, ty + th - 35, 62, 20, "#1d1d1d", 'rx="10"') + t(x + tw - 49, ty + th - 21, "ACTIVE", 9.5, P, "bold", "middle", MONO, ls=1))
+            o.append(R(x + tw - 94, ty + th - 37, 76, 24, "#222", 'rx="12"') + t(x + tw - 56, ty + th - 20.5, "ACTIVE", 11.5, P, "bold", "middle", MONO, ls=1))
         else:
-            o.append(t(x + tw - 22, ty + th - 20.5, r["status"], 10, G1, anchor="end", font=MONO, ls=1))
+            o.append(t(x + tw - 22, ty + th - 20.5, r["status"], 12, G3, anchor="end", font=MONO, ls=1))
     return "".join(o), 300
 
 
@@ -401,7 +401,7 @@ def main():
                   current, longest, (date.fromisoformat(peak_d["date"]), peak_d["contributionCount"]), counts[-30:]),
          heatmap(cal, days, sum(1 for c in counts if c))]
     y = 782
-    rh = max(260, 76 + len(STACK) * 40)
+    rh = max(260, 80 + len(STACK) * 44)
     if langs:
         o.append(languages(y, rh, langs, other))
     o.append(stack(y, rh, 400 if langs else 24))
@@ -409,7 +409,7 @@ def main():
     body, ph = projects(y, user.get("pinnedItems"), now)
     o.append(body)
     y += ph + 16 if ph else 0
-    o.append(t(500, y + 26, f"auto-generated daily via GitHub Actions · last sync {now.day} {now:%b %Y}", 12, G2, anchor="middle", font=MONO))
+    o.append(t(500, y + 26, f"auto-generated daily via GitHub Actions · last sync {now.day} {now:%b %Y}", 14, G3, anchor="middle", font=MONO))
     H = int(y + 56)
 
     defs = ('<linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#161616"/><stop offset="1" stop-color="#0e0e0e"/></linearGradient>'
