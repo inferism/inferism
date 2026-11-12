@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
-"""Builds assets/profile.svg: one cyberpunk-HUD container with all profile sections.
+"""Builds assets/profile.svg: a dark bento-grid profile card (greys sampled from the pfp).
 
-Needs: gh CLI + GH_TOKEN, and USERNAME. Set PROFILE_FAKE=<json file> to test offline.
+Needs: gh CLI + GH_TOKEN, and PROFILE_USER (defaults to inferism). Set PROFILE_FAKE=<json file> to test offline.
 """
 import json
 import math
 import os
-import base64
-import random
 import subprocess
 import textwrap
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-USER = os.environ.get("USERNAME", "inferism")
+USER = os.environ.get("PROFILE_USER", "inferism")  # not USERNAME: that's the OS account on Windows
 W = 1000
-SWEEP_S = 7  # seconds per radar rotation; blips are timed against it
 
 QUERY = """
 query($login: String!) {
@@ -36,13 +33,16 @@ query($login: String!) {
   }
 }"""
 
-FONT = 'ui-monospace, "SF Mono", Menlo, Consolas, "Courier New", monospace'
-# palette sampled from the pfp (black / white halftone greys)
-BG, PANEL, LINE, EDGE = "#060606", "#0e0e0f", "#2b2b2d", "#5c5c5e"
-TEXT, DIM, BRIGHT = "#c1c1c3", "#767678", "#ffffff"
-PFP = "assets/pfp.jpg"
+SANS = "'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif"
+MONO = "ui-monospace,'SF Mono',Menlo,Consolas,monospace"
+# the pfp's tones: black ink, five halftone greys, paper
+K, G1, G2, G3, G4, G5, P = "#0a0a0a", "#4c4c4c", "#676767", "#7a7a7a", "#9c9c9c", "#c4c4c4", "#f2f2f0"
+LANG_TONES = [P, G5, G4, G3, G2, G1, "#333333"]
+HEAT = ["#1a1a1a", G1, G3, G5, P]
 
-STACK = [  # label, chips
+BIO = "2nd-year BSIT student building web apps, CLIs and desktop tools I'd actually use."
+TAGS = ["Web apps", "CLIs", "Desktop tools"]
+STACK = [  # label, chips (the first chip of each row is drawn as the primary one)
     ("languages", ["TypeScript", "JavaScript", "Python", "HTML", "CSS"]),
     ("frameworks", ["Next.js", "React"]),
     ("backend", ["Firebase Auth", "Firestore", "Security Rules"]),
@@ -50,9 +50,13 @@ STACK = [  # label, chips
     ("testing", ["Firebase Emulators", "tsx tests"]),
     ("automation", ["Python", "GitHub Actions", "GraphQL API", "SVG"]),
 ]
+LANG_NAMES = {"Visual Basic .NET": "VB.NET"}
+FILE_FOR = {"JavaScript": "main.js", "TypeScript": "index.ts", "Python": "main.py", "Rust": "main.rs",
+            "CSS": "style.css", "HTML": "index.html", "Go": "main.go", "Java": "Main.java"}
+
 
 def esc(s):
-    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 
 def fetch():
@@ -90,80 +94,6 @@ def streaks(days):
     return current, longest
 
 
-def cut(x, y, w, h, c, fill, stroke, sw=1.5, tl=False, tr=True, br=False, bl=True, dash=""):
-    """Polygon with chamfered corners (the HUD panel shape)."""
-    pts = []
-    pts += [(x, y + c), (x + c, y)] if tl else [(x, y)]
-    pts += [(x + w - c, y), (x + w, y + c)] if tr else [(x + w, y)]
-    pts += [(x + w, y + h - c), (x + w - c, y + h)] if br else [(x + w, y + h)]
-    pts += [(x + c, y + h), (x, y + h - c)] if bl else [(x, y + h)]
-    d = " ".join(f"{px:g},{py:g}" for px, py in pts)
-    da = f' stroke-dasharray="{dash}"' if dash else ""
-    return f'<polygon points="{d}" fill="{fill}" stroke="{stroke}" stroke-width="{sw}" stroke-linejoin="miter"{da}/>'
-
-
-def corner(x, y, dx, dy, color=BRIGHT):
-    return f'<path d="M{x} {y + dy}V{y}H{x + dx}" fill="none" stroke="{color}" stroke-width="2"/>'
-
-
-def heading(name, cmd, num):
-    return (
-        '<rect x="28" y="20" width="12" height="30" fill="url(#hz)"/>'
-        f'<text x="54" y="44" class="hi" font-size="28" font-weight="700" letter-spacing="4">{esc(name.upper())}</text>'
-        f'<text x="972" y="44" text-anchor="end" class="dim" font-size="16" letter-spacing="2">// {num}</text>'
-        f'<text x="28" y="72" class="dim" font-size="15">&gt; {esc(cmd)}</text>'
-    )
-
-
-def portrait(x, y, s):
-    """Operator portrait in a chamfered HUD frame (skipped if assets/pfp.jpg is missing)."""
-    if not os.path.exists(PFP):
-        return ""
-    with open(PFP, "rb") as f:
-        b64 = base64.b64encode(f.read()).decode()
-    c = 24
-    return (
-        f'<image xlink:href="data:image/jpeg;base64,{b64}" x="{x}" y="{y}" width="{s}" height="{s}" '
-        'preserveAspectRatio="xMidYMid slice" clip-path="url(#pf)"/>'
-        f'<rect x="{x}" y="{y}" width="{s}" height="{s}" fill="url(#scan)" clip-path="url(#pf)"/>'
-        + cut(x, y, s, s, c, "none", EDGE)
-        + corner(x - 6, y - 6, 22, 22)
-        + corner(x + s + 6, y + s + 6, -22, -22)
-        + f'<text x="{x}" y="{y + s + 26}" class="dim" font-size="13" letter-spacing="2">OPERATOR // {USER.upper()}</text>'
-        + f'<text x="{x}" y="{y + s + 46}" class="dim" font-size="13" letter-spacing="2">STATUS <tspan class="hi">ACTIVE</tspan><tspan class="hi blink"> _</tspan></text>'
-    )
-
-
-def sec_whoami():
-    t = USER.upper()
-    tx, ty = 270, 150
-    title = f'font-size="72" font-weight="700" letter-spacing="5"'
-    body = (
-        '<rect x="28" y="16" width="84" height="18" fill="url(#hz)"/>'
-        f'<text x="128" y="31" class="dim" font-size="14" letter-spacing="2">SYS://{t} // NODE:BSIT</text>'
-        '<rect x="648" y="19" width="10" height="10" fill="#ffffff" class="blink"/>'
-        '<text x="972" y="31" text-anchor="end" class="hi" font-size="14" letter-spacing="2">ONLINE - ALL SYSTEMS NOMINAL</text>'
-        f'<line x1="1" y1="48" x2="{W - 1}" y2="48" stroke="{LINE}" stroke-width="1.5"/>'
-        + portrait(32, 82, 200)
-        + f'<text x="{tx + 4}" y="{ty + 2}" {title} fill="{EDGE}" opacity="0.8">{t}</text>'
-        f'<text x="{tx}" y="{ty}" class="hi" {title} filter="url(#glow)">{t}</text>'
-        f'<g clip-path="url(#slice)"><text class="gl" x="{tx}" y="{ty}" {title} fill="{TEXT}">{t}</text></g>'
-        f'<g fill="none" stroke="{EDGE}" stroke-width="1.2"><circle cx="905" cy="128" r="46"/>'
-        f'<circle cx="905" cy="128" r="32" stroke-dasharray="3 5"/><line x1="845" y1="128" x2="870" y2="128"/>'
-        '<line x1="940" y1="128" x2="965" y2="128"/><line x1="905" y1="68" x2="905" y2="84"/><line x1="905" y1="172" x2="905" y2="188"/></g>'
-        '<circle cx="905" cy="128" r="5" fill="#ffffff" class="blink"/>'
-        f'<line x1="{tx}" y1="172" x2="{W - 28}" y2="172" stroke="{LINE}" stroke-width="1.5"/>'
-        f'<text x="{tx}" y="206" class="txt" font-size="19"><tspan class="hi">&gt;&gt;</tspan> 2nd-year BSIT student</text>'
-        f'<text x="{tx}" y="238" class="txt" font-size="19"><tspan class="hi">&gt;&gt;</tspan> building web apps and games, learning front-end and back-end</text>'
-        f'<text x="{tx}" y="270" class="txt" font-size="19"><tspan class="hi">&gt;&gt;</tspan> shipping personal projects I could actually use<tspan class="hi blink"> _</tspan></text>'
-    )
-    return body, 352
-
-
-LANG_SHADES = ["#ffffff", "#c1c1c3", "#969699", "#767678", "#5c5c5e", "#414143"]  # rank 1..6, grey ramp from the pfp
-LANG_NAMES = {"Visual Basic .NET": "VB.NET"}
-
-
 def top_languages(repos, n=6):
     """Public-repo language totals as [(name, share)], plus the share left in 'other'."""
     totals = {}
@@ -178,326 +108,325 @@ def top_languages(repos, n=6):
     return top, 1 - sum(s for _, s in top)
 
 
-def lang_panel(y, langs, other):
-    """Stacked share bar + legend. Returns (svg, panel height)."""
-    x0, w, h = 25, 950, 150
-    inner, gap = 918, 2
-    avail = inner - gap * (len(langs) - 1 + (1 if other > 0.0005 else 0))
-    out = [
-        cut(x0, y, w, h, 16, PANEL, TEXT, 1.5, dash="6 4")
-        + f'<rect x="{x0}" y="{y}" width="{w}" height="{h}" fill="url(#dots)"/>'
-        + f'<rect x="{x0}" y="{y + 12}" width="4" height="18" fill="#ffffff"/>'
-        + f'<text x="41" y="{y + 26}" class="dim" font-size="12" letter-spacing="1.5">TOP LANGUAGES</text>'
-        + f'<text x="959" y="{y + 26}" text-anchor="end" font-size="12" fill="{EDGE}">public repos · by code size</text>'
-    ]
-    x = 41.0
-    segs = [(s, LANG_SHADES[i]) for i, (_, s) in enumerate(langs)]
-    if other > 0.0005:
-        segs.append((other, "#2b2b2d"))
-    for s, shade in segs:
-        sw = s * avail
-        out.append(f'<rect x="{x:.1f}" y="{y + 40}" width="{sw:.1f}" height="20" fill="{shade}"/>')
-        x += sw + gap
-    out.append(f'<line x1="41" y1="{y + 66}" x2="959" y2="{y + 66}" stroke="{EDGE}" stroke-width="1"/>')
-    for k in range(5):
-        out.append(f'<rect x="{41 + k * 229.25:.1f}" y="{y + 64}" width="1" height="5" fill="{EDGE}"/>')
-    for i, (name, s) in enumerate(langs):
-        lx = 41 + i * 153
-        out.append(
-            f'<rect x="{lx}" y="{y + 86}" width="10" height="10" fill="{LANG_SHADES[i]}"/>'
-            f'<text x="{lx + 17}" y="{y + 96}" class="hi" font-size="16">{esc(name)}</text>'
-            f'<text x="{lx + 17}" y="{y + 120}" class="dim" font-size="14">{s * 100:.1f}%</text>'
-        )
-    if other > 0.0005:
-        out.append(f'<text x="959" y="{y + 120}" text-anchor="end" font-size="13" fill="{EDGE}">other {other * 100:.1f}%</text>')
-    return "".join(out), h
+# ── drawing helpers ──
+def t(x, y, s, size=14, fill=P, weight="normal", anchor="start", font=None, ls=None, extra=""):
+    e = f' letter-spacing="{ls}"' if ls is not None else ""
+    return (f'<text x="{x:.1f}" y="{y:.1f}" font-family="{font or SANS}" font-size="{size}" fill="{fill}" '
+            f'font-weight="{weight}" text-anchor="{anchor}"{e}{extra}>{esc(s)}</text>')
 
 
-def sec_stats(cc, repos=None):
-    cal = cc["contributionCalendar"]
-    current, longest = streaks(sorted_days(cal))
-    cards = [
-        ("CONTRIBUTIONS", f"{cal['totalContributions']:,}", "", "last 12 months"),
-        ("COMMITS", f"{cc['totalCommitContributions']:,}", "", "last 12 months"),
-        ("PULL REQUESTS", f"{cc['totalPullRequestContributions']:,}", "", "last 12 months"),
-        ("CURRENT STREAK", current, "d", "days in a row"),
-        ("LONGEST STREAK", longest, "d", "last 12 months"),
-    ]
-    out = [heading("stats", f"gh stats --user {USER}", "01")]
-    top, h = 100, 132
-    for i, (label, value, unit, sub) in enumerate(cards):
-        x = 25 + i * 195
-        ruler = "".join(
-            f'<line x1="{x + 16 + k * 10}" y1="{top + h - 9}" x2="{x + 16 + k * 10}" y2="{top + h - (4 if k % 3 == 0 else 6)}" stroke="{EDGE}" stroke-width="1"/>'
-            for k in range(15)
-        )
-        out.append(
-            cut(x, top, 170, h, 16, PANEL, EDGE)
-            + f'<rect x="{x}" y="{top}" width="170" height="{h}" fill="url(#dots)"/>'
-            + f'<rect x="{x}" y="{top + 12}" width="4" height="18" fill="#ffffff"/>'
-            + f'<text x="{x + 16}" y="{top + 28}" class="dim" font-size="12" letter-spacing="1.5">{label}</text>'
-            f'<text x="{x + 16}" y="{top + 82}" class="hi" font-size="44" font-weight="700" filter="url(#ng)">{value}<tspan font-size="20" class="dim">{unit}</tspan></text>'
-            f'<text x="{x + 16}" y="{top + 106}" class="dim" font-size="13">{sub}</text>'
-            + ruler
-        )
-    end = top + h
-    langs, other = top_languages(repos)
-    if langs:
-        panel, ph = lang_panel(end + 20, langs, other)
-        out.append(panel)
-        end += 20 + ph
-    now = datetime.now(timezone.utc)
-    out.append(
-        f'<text x="972" y="{end + 28}" text-anchor="end" class="dim" font-size="13">updated {now.day} {now.strftime("%b %Y")}</text>'
-    )
-    return "".join(out), end + 46
+def R(x, y, w, h, fill, extra=""):
+    return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" {extra}/>'
 
 
-def stars(h):
-    """Plain space backdrop with a light starfield."""
-    rnd = random.Random(7)
-    out = [f'<rect x="1" y="0" width="{W - 2}" height="{h}" fill="#050507"/>']
-    for i in range(170):
-        x, y = rnd.uniform(14, W - 14), rnd.uniform(10, h - 10)
-        if y < 90 and (x < 430 or x > 880):  # keep the heading readable
-            continue
-        r = rnd.choice([0.5, 0.6, 0.7, 0.9, 1.1])
-        tw = f' class="tw" style="animation-delay:-{rnd.uniform(0, 4):.1f}s"' if i % 9 == 0 else ""
-        out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="#fff" fill-opacity="{rnd.uniform(0.2, 0.65):.2f}"{tw}/>')
+def tile(x, y, w, h):
+    return R(x, y, w, h, "url(#tf)", 'rx="24" stroke="url(#edge)" stroke-width="1.2"')
+
+
+def label(x, y, s, right=None):
+    r = t(x, y, s, 11, G3, "bold", ls=2.5)
+    return r + (t(right[0], y, right[1], 11, G2, anchor="end", ls=2) if right else "")
+
+
+def chip_w(s, px=12):
+    return len(s) * px * 0.58 + 22
+
+
+def fmt_day(d):
+    return f"{d:%b} {d.day}"
+
+
+def ring(cx, cy, r0, r1, parts):
+    """Segmented donut: parts = [(share, colour)]."""
+    out, a = [], -90.0
+    for share, col in parts:
+        a1 = a + 360 * share
+        if a1 - a > 1.8:
+            A0, A1 = math.radians(a + 0.8), math.radians(a1 - 0.8)
+            big = 1 if a1 - a > 180 else 0
+            out.append(f'<path d="M{cx + r1 * math.cos(A0):.2f} {cy + r1 * math.sin(A0):.2f} A{r1} {r1} 0 {big} 1 '
+                       f'{cx + r1 * math.cos(A1):.2f} {cy + r1 * math.sin(A1):.2f} L{cx + r0 * math.cos(A1):.2f} {cy + r0 * math.sin(A1):.2f} '
+                       f'A{r0} {r0} 0 {big} 0 {cx + r0 * math.cos(A0):.2f} {cy + r0 * math.sin(A0):.2f}Z" fill="{col}"/>')
+        a = a1
     return "".join(out)
 
 
-MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+# ── sections ──
+def hero(now):
+    o = [tile(24, 24, 620, 300)]
+    dots = []  # halftone screentone bleeding in from the top-right corner, like the pfp's shading
+    for gy in range(24, 330, 11):
+        for gx in range(24, 650, 11):
+            off = 5.5 if (gy // 11) % 2 else 0
+            r = 3.6 * (1 - math.hypot(gx + off - 650, gy - 10) / 430)
+            if r > 0.35:
+                dots.append(f'<circle cx="{gx + off}" cy="{gy}" r="{r:.2f}"/>')
+    o.append(f'<g clip-path="url(#hero)"><g fill="#fff" fill-opacity="0.085">{"".join(dots)}</g>'
+             '<circle cx="640" cy="30" r="320" fill="url(#glow)"/></g>')
+    pill = f"Shipping in public · {now:%b %Y}"
+    pw = len(pill) * 6.6 + 44
+    o.append(R(52, 52, pw, 28, "#141414", 'rx="14" stroke="#2e2e2e"'))
+    o.append(f'<circle cx="69" cy="66" r="7" fill="{P}" fill-opacity="0.15" class="pulse"/><circle cx="69" cy="66" r="3.5" fill="{P}"/>')
+    o.append(t(82, 70.5, pill, 12, G5))
+    size = min(110, 560 / (len(USER) * 0.56))
+    o.append(t(46, 192, USER, round(size), P, "bold", ls=-5.5))
+    for i, ln in enumerate(textwrap.wrap(BIO, 50)[:2]):
+        o.append(t(52, 236 + i * 26, ln, 19, G4))
+    x = 52
+    for s in TAGS:
+        w = chip_w(s)
+        o.append(R(x, 284, w, 26, "none", f'rx="13" stroke="{G1}"') + t(x + w / 2, 301.5, s, 12, G5, anchor="middle"))
+        x += w + 8
+    o.append(t(616, 301.5, f"github.com/{USER} ↗", 12.5, G2, anchor="end", font=MONO))
+    return "".join(o)
 
 
-def sec_galaxy(cal):
-    days = sorted_days(cal)
-    n = len(days)
-    peak = max((d["contributionCount"] for d in days), default=0) or 1
-    rnd = random.Random(8)
-    h_gal, cx, cy = 480, W / 2, 278
-    out = [stars(h_gal), heading("contribution-radar", "scan --last 365d  # one blip per day", "02")]
-    out.append(f'<ellipse cx="{cx}" cy="{cy}" rx="105" ry="62" fill="url(#gcore)"/>')
-    for r in (40, 85, 130, 168):  # radar rings + crosshair
-        out.append(f'<ellipse cx="{cx}" cy="{cy}" rx="{r * 1.95:.1f}" ry="{r * 1.12:.1f}" fill="none" stroke="{EDGE}" stroke-width="1" stroke-opacity="0.55" stroke-dasharray="3 6"/>')
-    out.append(f'<line x1="28" y1="{cy}" x2="{W - 28}" y2="{cy}" stroke="{EDGE}" stroke-width="1" stroke-opacity="0.5"/>')
-    out.append(f'<line x1="{cx}" y1="96" x2="{cx}" y2="{h_gal - 40}" stroke="{EDGE}" stroke-width="1" stroke-opacity="0.5"/>')
-    for k in range(-12, 13):
-        tl = 7 if k % 4 == 0 else 3
-        out.append(f'<line x1="{cx + k * 40}" y1="{cy - tl}" x2="{cx + k * 40}" y2="{cy + tl}" stroke="{EDGE}" stroke-width="1"/>')
-    # rotating sweep: fading wedge behind a bright leading edge, squashed to match the elliptical rings
-    sr, step = 168, 4
-    wedge = ""
-    for i in range(14):
-        a0, a1 = math.radians(-i * step), math.radians(-(i + 1) * step)
-        wedge += (
-            f'<path d="M0 0L{sr * math.cos(a0):.1f} {sr * math.sin(a0):.1f}A{sr} {sr} 0 0 0 {sr * math.cos(a1):.1f} {sr * math.sin(a1):.1f}Z" '
-            f'fill="#fff" fill-opacity="{0.2 * (1 - i / 14) ** 1.6:.3f}"/>'
-        )
-    out.append(
-        f'<g transform="translate({cx} {cy}) scale(1.95 1.12)"><g class="sw">{wedge}'
-        f'<line x1="0" y1="0" x2="{sr}" y2="0" stroke="#fff" stroke-opacity="0.75" stroke-width="0.9" vector-effect="non-scaling-stroke"/></g></g>'
-    )
-    for _ in range(300):  # faint dust around the arm
-        a, d = rnd.uniform(0, math.tau), math.sqrt(rnd.random()) * 175
-        out.append(f'<circle cx="{cx + math.cos(a) * d * 1.95:.1f}" cy="{cy + math.sin(a) * d * 1.12:.1f}" r="0.6" fill="#fff" fill-opacity="{rnd.uniform(0.08, 0.3):.2f}"/>')
-    for i, d in enumerate(days):
-        t = i / max(1, n - 1)
-        ang, rad = t * math.tau * 3 + 0.6, 14 + t * 150 + (rnd.random() - 0.5) * 7
-        c = d["contributionCount"]
-        x, y = cx + math.cos(ang) * rad * 1.95, cy + math.sin(ang) * rad * 1.12
-        if c:
-            lv = min(4, max(1, math.ceil(4 * c / peak)))
-            sz = 2.6 + lv * 1.7
-            # the sweep reaches this blip at angle `hit` (undo the ellipse squash first); flash then
-            hit = math.atan2((y - cy) / 1.12, (x - cx) / 1.95) % math.tau / math.tau * SWEEP_S
-            out.append(
-                f'<rect class="bl" style="animation-delay:{hit - SWEEP_S:.2f}s" x="{x - sz / 2:.1f}" y="{y - sz / 2:.1f}" '
-                f'width="{sz:.1f}" height="{sz:.1f}" fill="#fff" fill-opacity="{0.5 + lv * 0.12:.2f}"/>'
-            )
-        else:
-            out.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="0.8" fill="#fff" fill-opacity="0.16"/>')
-    total = sum(d["contributionCount"] for d in days)
-    out.append(f'<text x="28" y="{h_gal - 22}" class="dim" font-size="15">{total:,} contributions · peak {peak}/day · one blip per day · core = 365d ago, rim = today</text>')
-
-    # monitor: the same year, month by month
-    by_month = {}
-    for d in days:
-        k = d["date"][:7]
-        by_month[k] = by_month.get(k, 0) + d["contributionCount"]
-    keys = sorted(by_month)[-12:]
-    tot = [by_month[k] for k in keys]
-    mx = max(tot) or 1
-    y0 = h_gal
-    out.append(f'<line x1="28" y1="{y0}" x2="{W - 28}" y2="{y0}" stroke="{LINE}" stroke-width="1.5" stroke-dasharray="2 5"/>')
-    out.append(f'<text x="28" y="{y0 + 44}" class="dim" font-size="15">&gt; htop --contributions  # monthly load</text>')
-    ticks, pitch, bx = 40, 14, 124
-    for r, (k, v) in enumerate(zip(keys, tot)):
-        y = y0 + 96 + r * 32
-        filled = round(v / mx * ticks)
-        out.append(
-            f'<text x="28" y="{y}" class="txt" font-size="18">{MONTHS[int(k[5:7]) - 1]}</text>'
-            f'<path d="M{bx - 6} {y - 16}H{bx - 14}V{y + 6}H{bx - 6}" fill="none" stroke="{DIM}" stroke-width="1.5"/>'
-            + "".join(
-                f'<rect x="{bx + i * pitch}" y="{y - 14}" width="3" height="18" fill="{BRIGHT if i < filled else "#1b1b1e"}"/>'
-                for i in range(ticks)
-            )
-            + f'<path d="M{bx + ticks * pitch - 3} {y - 16}H{bx + ticks * pitch + 5}V{y + 6}H{bx + ticks * pitch - 3}" fill="none" stroke="{DIM}" stroke-width="1.5"/>'
-            f'<text x="{W - 190}" y="{y}" text-anchor="end" class="hi" font-size="18" font-weight="700">{round(v / mx * 100)}%</text>'
-            f'<text x="{W - 40}" y="{y}" text-anchor="end" class="txt" font-size="18">{v}</text>'
-        )
-    ye = y0 + 96 + len(keys) * 32 + 14
-    active = sum(1 for d in days if d["contributionCount"])
-    out.append(f'<text x="28" y="{ye + 20}" class="dim" font-size="16">TASKS: {active} active days, {n} total</text>')
-    out.append(f'<text x="28" y="{ye + 46}" class="dim" font-size="16">UPTIME: {n} days</text>')
-    return "".join(out), ye + 76
+def headline(total, weekly, months):
+    o = [tile(660, 24, 316, 300), label(688, 62, "CONTRIBUTIONS", (948, "LAST 12 MO"))]
+    num = f"{total:,}"
+    o.append(t(682, 168, num, 112 if len(num) <= 3 else 92 if len(num) <= 5 else 76, P, "bold", ls=-5))
+    (pm, pc), (cm, cc) = months[-2], months[-1]
+    if pc:
+        d = round(100 * (cc - pc) / pc)
+        chip = f"{'▲' if d >= 0 else '▼'} {abs(d)}% vs {pm}"
+    else:
+        chip = f"▲ {cc} this month" if cc else "quiet month"
+    cw = len(chip) * 6.9 + 26
+    o.append(R(688, 186, cw, 24, "url(#chipP)", 'rx="12"') + t(688 + cw / 2, 202.5, chip, 11.5, K, "bold", "middle"))
+    mx = max(weekly) or 1
+    n = len(weekly)
+    pts = [(661 + i * 314 / max(n - 1, 1), 322 - 92 * (v / mx) ** 0.7) for i, v in enumerate(weekly)]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+    o.append(f'<g clip-path="url(#big)"><polygon points="661,324 {line} 975,324" fill="url(#ag)"/>'
+             f'<polyline class="dr" points="{line}" fill="none" stroke="{P}" stroke-width="1.8" stroke-linejoin="round"/></g>')
+    ex, ey = pts[-1]
+    o.append(f'<circle cx="{ex - 6:.1f}" cy="{ey:.1f}" r="4" fill="{P}" class="pulse"/>')
+    return "".join(o)
 
 
-def sec_projects(pinned):
-    """Pinned public repos as stat-card-style tiles, two per row. Returns None when there is nothing to show."""
-    repos = [r for r in (pinned or {}).get("nodes", []) if r and r.get("name") and not r.get("isPrivate")][:6]
+def stat_row(total, commits, prs, current, longest, peak, last30):
+    o = []
+
+    def head(x, lab, num, foot):
+        s = tile(x, 340, 226, 170) + label(x + 24, 376, lab)
+        s += t(x + 21, 456, f"{num:,}", 68 if num < 1000 else 56, P, "bold", ls=-3)
+        return s + (t(x + 24, 488, foot, 12.5, G2) if foot else "")
+
+    pct = commits / total if total else 0
+    o.append(head(24, "COMMITS", commits, f"{round(100 * pct)}% of all activity"))
+    cx, cy, r = 206, 418, 24
+    circ = 2 * math.pi * r
+    o.append(f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="#242424" stroke-width="7"/>'
+             f'<circle cx="{cx}" cy="{cy}" r="{r}" fill="none" stroke="{P}" stroke-width="7" stroke-linecap="round" '
+             f'stroke-dasharray="{circ * pct:.1f} {circ:.1f}" transform="rotate(-90 {cx} {cy})"/>')
+
+    o.append(head(266, "PULL REQUESTS", prs, "last 12 months"))
+    gx, gy = 442, 398  # merge glyph
+    o.append(f'<g fill="none" stroke="{G4}" stroke-width="2.4" stroke-linecap="round"><circle cx="{gx}" cy="{gy}" r="5"/>'
+             f'<circle cx="{gx}" cy="{gy + 42}" r="5"/><circle cx="{gx + 26}" cy="{gy + 24}" r="5" stroke="{P}"/>'
+             f'<path d="M{gx} {gy + 5}V{gy + 37}"/><path d="M{gx} {gy + 6}C{gx} {gy + 20} {gx + 26} {gy + 8} {gx + 26} {gy + 19}"/></g>')
+
+    o.append(head(508, "DAY STREAK", current, None if current else "no streak yet"))
+    o.append(t(710, 376, f"longest {longest}", 11, G2, anchor="end"))
+    bars = min(current, 19)
+    for k in range(bars):
+        last = k == bars - 1
+        h = 4 + k * 0.9
+        o.append(R(532 + k * 9.6, 480 - h, 6, h, P if last else G2, 'rx="2"' + (' class="pulse"' if last else "")))
+
+    pd, pc = peak
+    o.append(head(750, "PEAK DAY", pc, f"contributions on {fmt_day(pd)}"))
+    m = max(last30) or 1
+    sp = [(900 + i * 52 / max(len(last30) - 1, 1), 436 - 44 * c / m) for i, c in enumerate(last30)]
+    o.append(f'<polyline points="{" ".join(f"{a:.1f},{b:.1f}" for a, b in sp)}" fill="none" stroke="{G3}" stroke-width="1.6" stroke-linejoin="round"/>')
+    if any(last30):
+        px, py = min(sp, key=lambda p: p[1])
+        o.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="3.5" fill="{P}"/>')
+    return "".join(o)
+
+
+def level(c, mx):
+    if c == 0:
+        return 0
+    f = c / mx
+    return 1 if f < 0.1 else 2 if f < 0.3 else 3 if f < 0.55 else 4
+
+
+def heatmap(cal, days, active):
+    weeks = cal["weeks"]
+    n = len(weeks)
+    step = min(17.0, 900 / n)
+    cell = step - 4
+    mx = max(d["contributionCount"] for d in days) or 1
+    first, last = date.fromisoformat(days[0]["date"]), date.fromisoformat(days[-1]["date"])
+    o = [tile(24, 526, 952, 240), t(52, 566, "Contribution activity", 18, P, "bold"),
+         t(52, 586, f"{first:%b %Y} – {last:%b %Y} · {active} active days", 12, G2),
+         t(840, 566, "Less", 11, G2, anchor="end"), t(932, 566, "More", 11, G2)]
+    o += [R(848 + k * 16, 556, 11, 11, c, 'rx="2.5"') for k, c in enumerate(HEAT)]
+    seen, last_x = set(), -99
+    for w, wk in enumerate(weeks):
+        for d in wk["contributionDays"]:
+            dd = date.fromisoformat(d["date"])
+            wd = (dd.weekday() + 1) % 7  # Sunday first, like GitHub
+            x, y = 52 + w * step, 604 + wd * step
+            today = d["date"] == days[-1]["date"]
+            o.append(R(x, y, cell, cell, HEAT[level(d["contributionCount"], mx)], 'rx="3"' + (' class="pulse"' if today else "")))
+            if dd.day <= 7 and (dd.year, dd.month) not in seen and w > 0:
+                seen.add((dd.year, dd.month))
+                if x - last_x > 34:
+                    o.append(t(x, 744, f"{dd:%b}", 11, G2))
+                    last_x = x
+    return "".join(o)
+
+
+def languages(y, h, langs, other):
+    o = [tile(24, y, 360, h), t(52, y + 40, "Languages", 18, P, "bold"), t(356, y + 40, "by bytes", 13, G3, anchor="end")]
+    parts = [(s, LANG_TONES[i]) for i, (_, s) in enumerate(langs)]
+    if other > 0.0005:
+        parts.append((other, "#2a2a2a"))
+    cy = y + 60 + (h - 60) / 2
+    o.append(ring(118, cy, 44, 64, parts))
+    o.append(t(118, cy + 6, len(langs), 24, P, "bold", "middle") + t(118, cy + 22, "langs", 10, G2, anchor="middle"))
+    rows = [(n, s, LANG_TONES[i]) for i, (n, s) in enumerate(langs)]
+    if other > 0.0005:
+        rows.append(("Other", other, "#2a2a2a"))
+    y0 = cy - (len(rows) - 1) * 12.5 + 4
+    for i, (n, s, col) in enumerate(rows):
+        yy = y0 + i * 25
+        o.append(R(204, yy - 9, 8, 8, col, 'rx="2"') + t(220, yy, n, 13.5, G5) + t(356, yy, f"{100 * s:.1f}%", 12, G4, anchor="end", font=MONO))
+    return "".join(o)
+
+
+def stack(y, h, x0=400):
+    o = [tile(x0, y, 976 - x0, h), t(x0 + 28, y + 40, "Stack", 18, P, "bold"), t(948, y + 40, "daily drivers", 13, G3, anchor="end")]
+    for i, (cat, items) in enumerate(STACK):
+        yy = y + 64 + i * 40
+        o.append(t(x0 + 28, yy + 19, cat, 11, G3, font=MONO))
+        cx = x0 + 120
+        for k, it in enumerate(items):
+            cw = chip_w(it)
+            if k == 0:
+                o.append(R(cx, yy, cw, 28, "url(#chipP)", 'rx="14"') + t(cx + cw / 2, yy + 18.5, it, 12, K, "bold", "middle"))
+            else:
+                o.append(R(cx, yy, cw, 28, "#171717", 'rx="14" stroke="#2e2e2e"') + t(cx + cw / 2, yy + 18.5, it, 12, G5, anchor="middle"))
+            cx += cw + 8
+    return "".join(o)
+
+
+def repo_info(r, now):
+    pushed = datetime.fromisoformat(r["pushedAt"].replace("Z", "+00:00"))
+    age = (now - pushed).days
+    return dict(name=r["name"], desc=r.get("description") or "", stars=r.get("stargazerCount") or 0,
+                lang=((r.get("primaryLanguage") or {}).get("name") or ""),
+                status="ACTIVE" if age <= 3 else "IDLE" if age <= 30 else "DORMANT",
+                pushed=f"pushed {pushed.day} {pushed:%b}")
+
+
+def projects(y, pinned, now):
+    repos = [repo_info(r, now) for r in (pinned or {}).get("nodes", []) if r and r.get("name") and not r.get("isPrivate")][:5]
     if not repos:
-        return None
-    out = [heading("projects", f"gh pinned --user {USER}", "03")]
-    top, h, cw, gap = 100, 140, 462, 26  # two columns of stat-card-style tiles
-    for i, r in enumerate(repos):
-        x, y = 25 + (i % 2) * (cw + gap), top + (i // 2) * (h + 20)
-        desc = textwrap.wrap(r.get("description") or "", 52, max_lines=2, placeholder="…")
-        lang = ((r.get("primaryLanguage") or {}).get("name") or "REPO").upper()
-        pushed = datetime.fromisoformat(r["pushedAt"].replace("Z", "+00:00"))
-        meta = f"pushed {pushed.day} {pushed.strftime('%b %Y')}" + (f" · ★ {r['stargazerCount']}" if r.get("stargazerCount") else "")
-        age = (datetime.now(timezone.utc) - pushed).days  # recency drives the status readout + signal bars
-        status = "ACTIVE" if age <= 3 else "IDLE" if age <= 30 else "DORMANT"
-        bars_on = 5 if age <= 1 else 4 if age <= 3 else 3 if age <= 7 else 2 if age <= 30 else 1
-        blink = ' class="blink"' if status == "ACTIVE" else ""
-        uid = f"0x{sum(ord(c) * (k + 1) for k, c in enumerate(r['name'])) % 0xFFFF:04X}"
-        poly = f"{x},{y} {x + cw - 16},{y} {x + cw},{y + 16} {x + cw},{y + h} {x + 16},{y + h} {x},{y + h - 16}"
-        ruler = "".join(
-            f'<line x1="{x + 16 + k * 10}" y1="{y + h - 9}" x2="{x + 16 + k * 10}" y2="{y + h - (4 if k % 3 == 0 else 6)}" stroke="{EDGE}" stroke-width="1"/>'
-            for k in range((cw - 32) // 10 + 1)
-        )
-        sig = "".join(
-            f'<rect x="{x + cw - 56 + k * 6}" y="{y + 62 - (4 + k * 2)}" width="4" height="{4 + k * 2}" fill="{BRIGHT if k < bars_on else LINE}"/>'
-            for k in range(5)
-        )
-        name = esc(r["name"])
-        out.append(
-            f'<clipPath id="pc{i}"><polygon points="{poly}"/></clipPath>'
-            f'<clipPath id="pg{i}"><rect x="{x}" y="{y + 46}" width="{cw}" height="5"/><rect x="{x}" y="{y + 58}" width="{cw}" height="3"/></clipPath>'
-            + cut(x, y, cw, h, 16, PANEL, EDGE)
-            + f'<rect x="{x}" y="{y}" width="{cw}" height="{h}" fill="url(#dots)"/>'
-            + f'<g clip-path="url(#pc{i})"><g class="pscan" style="animation-delay:-{i * 1.4:.1f}s">'
-            f'<rect x="{x}" y="{y - 14}" width="{cw}" height="14" fill="#fff" fill-opacity="0.05"/>'
-            f'<rect x="{x}" y="{y}" width="{cw}" height="2" fill="#fff" fill-opacity="0.22"/></g></g>'
-            + corner(x - 5, y - 5, 16, 16)
-            + corner(x + cw + 5, y + h + 5, -16, -16)
-            + f'<rect x="{x}" y="{y + 12}" width="4" height="18" fill="#ffffff"/>'
-            + f'<rect x="{x + 16}" y="{y + 19}" width="22" height="9" fill="url(#hz)"/>'
-            + f'<text x="{x + 46}" y="{y + 28}" class="dim" font-size="12" letter-spacing="1.5">PRJ-{i + 1:02d} // {esc(lang)}</text>'
-            + f'<text x="{x + cw - 28}" y="{y + 28}" text-anchor="end" class="dim" font-size="12">{meta}</text>'
-            + f'<text x="{x + 19}" y="{y + 72}" font-size="32" font-weight="700" fill="{EDGE}" opacity="0.8">{name}</text>'
-            + f'<text x="{x + 16}" y="{y + 70}" class="hi" font-size="32" font-weight="700" filter="url(#ng)">{name}</text>'
-            + f'<g clip-path="url(#pg{i})"><text class="gl" style="animation-delay:-{i * 1.7:.1f}s" x="{x + 16}" y="{y + 70}" font-size="32" font-weight="700" fill="{TEXT}">{name}</text></g>'
-            + sig
-            + f'<rect x="{x + cw - 64 - len(status) * 9.3 - 15:.1f}" y="{y + 53}" width="7" height="7" fill="#ffffff"{blink}/>'
-            + f'<text x="{x + cw - 64}" y="{y + 62}" text-anchor="end" class="{"hi" if status != "DORMANT" else "dim"}" font-size="13" letter-spacing="1.5">{status}</text>'
-            + "".join(f'<text x="{x + 16}" y="{y + 96 + k * 18}" class="dim" font-size="13">{esc(line)}</text>' for k, line in enumerate(desc))
-            + f'<text x="{x + cw - 28}" y="{y + h - 16}" text-anchor="end" font-size="11" letter-spacing="1" fill="{EDGE}">ID {uid}</text>'
-            + ruler
-        )
-    rows = (len(repos) + 1) // 2
-    return "".join(out), top + (rows - 1) * (h + 20) + h + 24
+        return "", 0
+    o = []
+    f, rest = repos[0], repos[1:]
+    fw = 468 if rest else 952
+    o.append(tile(24, y, fw, 300))
+    o.append(R(52, y + 28, 92, 26, "url(#chipP)", 'rx="13"') + t(98, y + 45.5, "FEATURED", 11, K, "bold", "middle", ls=1.5))
+    wx, wy = 24 + fw - 202, y + 24  # tiny editor window
+    o.append(R(wx, wy, 178, 104, "#0b0b0b", 'rx="10" stroke="#2a2a2a"') + R(wx, wy, 178, 22, "#151515", 'rx="10"') + R(wx, wy + 12, 178, 10, "#151515"))
+    o += [f'<circle cx="{wx + 13 + k * 11}" cy="{wy + 11}" r="3" fill="{G1}"/>' for k in range(3)]
+    o.append(t(wx + 168, wy + 15, FILE_FOR.get(f["lang"], "README.md"), 9.5, G2, anchor="end", font=MONO))
+    for k, (ind, w1, c1, w2, c2) in enumerate([(0, 34, G4, 52, G2), (12, 26, G3, 70, G1), (12, 44, G5, 30, G2), (0, 14, G4, 0, G1)]):
+        yy = wy + 34 + k * 15
+        o.append(t(wx + 10, yy + 6, k + 1, 8.5, "#3a3a3a", font=MONO) + R(wx + 26 + ind, yy, w1, 6, c1, 'rx="3"'))
+        if w2:
+            o.append(R(wx + 30 + ind + w1, yy, w2, 6, c2, 'rx="3"'))
+    o.append(R(wx + 44, wy + 79, 2, 10, P, 'class="cur"'))
+    nsize = min(54, 400 / max(len(f["name"]) * 0.55, 1))
+    o.append(t(50, y + 130, f["name"], round(nsize), P, "bold", ls=-1.5))
+    for i, ln in enumerate(textwrap.wrap(f["desc"], 40 if rest else 80, max_lines=2, placeholder="…")):
+        o.append(t(52, y + 166 + i * 25, ln, 17, G4))
+    o.append(R(24, y + 242, fw, 1, "#1e1e1e"))
+    if f["lang"]:
+        o.append(f'<circle cx="58" cy="{y + 271}" r="5" fill="{G5}"/>' + t(70, y + 276, f["lang"], 13, G5))
+    o.append(t(180, y + 276, f"★ {f['stars']}  ·  {f['pushed']}", 13, G4))
+    act = f["status"] == "ACTIVE"
+    o.append((f'<circle cx="{24 + fw - 100}" cy="{y + 271}" r="3.5" fill="{P}" class="pulse"/>' if act else "")
+             + t(24 + fw - 28, y + 276, f["status"], 12, P if act else G2, anchor="end", font=MONO, ls=1.5))
 
-
-def sec_stack(num="03"):
-    out = [heading("stack", "cat stack.json", num)]
-    y0, pitch = 104, 60
-    for i, (label, chips) in enumerate(STACK):
-        y = y0 + i * pitch
-        out.append(
-            f'<text x="28" y="{y + 23}" class="dim" font-size="18" letter-spacing="2">{label.upper()}</text>'
-            f'<line x1="28" y1="{y + 46}" x2="972" y2="{y + 46}" stroke="{LINE}" stroke-width="1.5" stroke-dasharray="2 5"/>'
-        )
-        x = 205.0
-        for c in chips:
-            w = len(c) * 9.7 + 30
-            out.append(
-                cut(x, y, w, 36, 9, PANEL, EDGE, 1.2, tr=True, bl=False)
-                + f'<rect x="{x:.1f}" y="{y}" width="3" height="36" fill="#ffffff"/>'
-                f'<text x="{x + w / 2:.1f}" y="{y + 24}" text-anchor="middle" class="hi" font-size="16">{esc(c)}</text>'
-            )
-            x += w + 12
-    return "".join(out), y0 + len(STACK) * pitch + 20
-
-
-def sec_exit():
-    body = (
-        '<rect x="28" y="30" width="84" height="18" fill="url(#hz)"/>'
-        '<text x="128" y="45" class="dim" font-size="14" letter-spacing="2">LINK // TERMINATING</text>'
-        '<text x="28" y="88" class="txt" font-size="18"><tspan class="hi">&gt;</tspan> logout</text>'
-        '<text x="28" y="120" class="txt" font-size="18"><tspan class="hi">&gt;</tspan> [session closed] see you in the next commit<tspan class="hi blink"> _</tspan></text>'
-        f'<text x="972" y="150" text-anchor="end" class="dim" font-size="14" letter-spacing="1">CONNECTION TO {USER.upper()} CLOSED.</text>'
-    )
-    return body, 172
+    # the rest fill the right half: 2 columns, rows share the 300px height
+    k = len(rest)
+    rows = (k + 1) // 2
+    th = (300 - 16 * (rows - 1)) / rows if rows else 0
+    for i, r in enumerate(rest):
+        col, row = i % 2, i // 2
+        span = k % 2 == 1 and i == k - 1  # odd one out spans both columns
+        x = 508 + (0 if span else col * 242)
+        tw = 468 if span else 226
+        ty = y + row * (th + 16)
+        a = r["status"] == "ACTIVE"
+        o.append(tile(x, ty, tw, th))
+        o.append(t(x + 22, ty + 40, r["name"], 19 if len(r["name"]) <= 16 else 16, P if a else G5, "bold"))
+        o.append(t(x + tw - 22, ty + 39, f"0{i + 2}", 11, G1, anchor="end", font=MONO))
+        nl = max(1, min(3, int((th - 118) // 18) + 1))  # keep clear of the language row
+        for j, ln in enumerate(textwrap.wrap(r["desc"], 30 if not span else 64, max_lines=nl, placeholder="…")):
+            o.append(t(x + 22, ty + 66 + j * 18, ln, 12.5, G3))
+        if r["lang"]:
+            o.append(f'<circle cx="{x + 26}" cy="{ty + th - 25}" r="4" fill="{G4}"/>' + t(x + 36, ty + th - 20.5, r["lang"], 12, G4))
+        if a:
+            o.append(R(x + tw - 80, ty + th - 35, 62, 20, "#1d1d1d", 'rx="10"') + t(x + tw - 49, ty + th - 21, "ACTIVE", 9.5, P, "bold", "middle", MONO, ls=1))
+        else:
+            o.append(t(x + tw - 22, ty + th - 20.5, r["status"], 10, G1, anchor="end", font=MONO, ls=1))
+    return "".join(o), 300
 
 
 def main():
     user = fetch()["data"]["user"]
     cc = user["contributionsCollection"]
-    projects = sec_projects(user.get("pinnedItems"))
-    sections = [
-        sec_whoami(),
-        sec_stats(cc, user.get("repositories")),
-        sec_galaxy(cc["contributionCalendar"]),
-        *([projects] if projects else []),
-        sec_stack("04" if projects else "03"),
-        sec_exit(),
-    ]
+    cal = cc["contributionCalendar"]
+    days = sorted_days(cal)
+    now = datetime.now(timezone.utc)
+    current, longest = streaks(days)
+    counts = [d["contributionCount"] for d in days]
+    peak_d = max(days, key=lambda d: d["contributionCount"])
+    weekly = [sum(d["contributionCount"] for d in wk["contributionDays"]) for wk in cal["weeks"]]
+    months = {}
+    for d in days:
+        dd = date.fromisoformat(d["date"])
+        months[(dd.year, dd.month)] = months.get((dd.year, dd.month), 0) + d["contributionCount"]
+    mlist = [(date(y, m, 1).strftime("%b"), c) for (y, m), c in sorted(months.items())]
+    langs, other = top_languages(user.get("repositories"))
 
-    parts, y = [], 0
-    for i, (body, h) in enumerate(sections):
-        parts.append(f'<g transform="translate(0 {y})">{body}</g>')
-        y += h
-        if i < len(sections) - 1:
-            parts.append(f'<line x1="1" y1="{y}" x2="{W - 1}" y2="{y}" stroke="{LINE}" stroke-width="1.5"/>')
-    total_h = y
+    o = [hero(now), headline(cal["totalContributions"], weekly, mlist),
+         stat_row(cal["totalContributions"], cc["totalCommitContributions"], cc["totalPullRequestContributions"],
+                  current, longest, (date.fromisoformat(peak_d["date"]), peak_d["contributionCount"]), counts[-30:]),
+         heatmap(cal, days, sum(1 for c in counts if c))]
+    y = 782
+    rh = max(260, 76 + len(STACK) * 40)
+    if langs:
+        o.append(languages(y, rh, langs, other))
+    o.append(stack(y, rh, 400 if langs else 24))
+    y += rh + 16
+    body, ph = projects(y, user.get("pinnedItems"), now)
+    o.append(body)
+    y += ph + 16 if ph else 0
+    o.append(t(500, y + 26, f"auto-generated daily via GitHub Actions · last sync {now.day} {now:%b %Y}", 12, G2, anchor="middle", font=MONO))
+    H = int(y + 56)
 
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="{W}" height="{total_h}" viewBox="0 0 {W} {total_h}" role="img" '
-        f'aria-label="{esc(USER)} profile: operator card, stats, contribution radar, stack">\n'
-        "<defs>"
-        '<pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="0.9" fill="#ffffff" fill-opacity="0.07"/></pattern>'
-        '<pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#ffffff" fill-opacity="0.07"/></pattern>'
-        f'<pattern id="hz" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="{TEXT}"/></pattern>'
-        '<clipPath id="pf"><polygon points="32,82 208,82 232,106 232,282 56,282 32,258"/></clipPath>'
-        '<clipPath id="slice"><rect x="250" y="104" width="520" height="9"/><rect x="250" y="130" width="520" height="5"/></clipPath>'
-        '<filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="5" result="b"/>'
-        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-        '<filter id="ng" x="-40%" y="-60%" width="180%" height="220%">'
-        '<feGaussianBlur in="SourceGraphic" stdDeviation="5" result="wide"/>'
-        '<feGaussianBlur in="SourceGraphic" stdDeviation="1.6" result="tight"/>'
-        '<feMerge><feMergeNode in="wide"/><feMergeNode in="tight"/><feMergeNode in="SourceGraphic"/></feMerge></filter>'
-        '<radialGradient id="gcore"><stop offset="0" stop-color="#fff" stop-opacity="0.4"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
-        "</defs>\n"
-        f"<style>text {{ font-family: {FONT}; }} .dim {{ fill: {DIM}; }} .txt {{ fill: {TEXT}; }} .hi {{ fill: {BRIGHT}; }} "
-        f".sw {{ transform-origin: 0 0; animation: sw {SWEEP_S}s linear infinite; }} @keyframes sw {{ to {{ transform: rotate(360deg); }} }} "
-        f".bl {{ opacity: 0.3; animation: bl {SWEEP_S}s linear infinite; }} @keyframes bl {{ 0% {{ opacity: 1; }} 6% {{ opacity: 1; }} 35% {{ opacity: 0.3; }} 100% {{ opacity: 0.3; }} }} "
-        ".pscan { animation: pscan 4.8s linear infinite; } @keyframes pscan { to { transform: translateY(156px); } } "
-        ".gl { animation: gl 5s steps(1) infinite; } @keyframes gl { 0%, 90%, 100% { transform: translateX(0); } 92% { transform: translateX(-9px); } 95% { transform: translateX(8px); } } "
-        ".blink { animation: blink 1.1s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } } "
-        ".tw { animation: tw 4s ease-in-out infinite; } @keyframes tw { 50% { opacity: 0.25; } } "
-        "@media (prefers-reduced-motion: reduce) { .sw, .gl, .blink, .tw, .bl, .pscan { animation: none; } .bl { opacity: 1; } }</style>\n"
-        + cut(1, 1, W - 2, total_h - 2, 28, BG, "none", 0) + "\n"
-        + cut(1, 1, W - 2, total_h - 2, 28, "url(#dots)", "none", 0) + "\n"
-        + "\n".join(parts) + "\n"
-        + f'<rect x="1" y="1" width="{W - 2}" height="{total_h - 2}" fill="url(#scan)" opacity="0.5" pointer-events="none"/>\n'
-        + cut(1, 1, W - 2, total_h - 2, 28, "none", EDGE, 2) + "\n"
-        + corner(1, 1, 18, 18)
-        + f'<line x1="{W - 29}" y1="1" x2="{W - 1}" y2="29" stroke="{BRIGHT}" stroke-width="3"/>'
-        + f'<line x1="1" y1="{total_h - 29}" x2="29" y2="{total_h - 1}" stroke="{BRIGHT}" stroke-width="3"/>'
-        + corner(W - 1, total_h - 1, -18, -18)
-        + "\n</svg>\n"
-    )
+    defs = ('<linearGradient id="tf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#161616"/><stop offset="1" stop-color="#0e0e0e"/></linearGradient>'
+            '<linearGradient id="edge" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="0.35" stop-color="#1f1f1f"/><stop offset="1" stop-color="#181818"/></linearGradient>'
+            '<linearGradient id="ag" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0.32"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+            '<radialGradient id="glow"><stop offset="0" stop-color="#fff" stop-opacity="0.10"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
+            '<linearGradient id="chipP" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#cfcfcd"/></linearGradient>'
+            '<clipPath id="hero"><rect x="24" y="24" width="620" height="300" rx="24"/></clipPath>'
+            '<clipPath id="big"><rect x="660" y="24" width="316" height="300" rx="24"/></clipPath>')
+    css = ('.pulse{animation:p 2.4s ease-in-out infinite}@keyframes p{50%{opacity:.25}}'
+           '.dr{stroke-dasharray:900;stroke-dashoffset:900;animation:dr 2.4s ease-out forwards}@keyframes dr{to{stroke-dashoffset:0}}'
+           '.cur{animation:c 1.1s steps(1) infinite}@keyframes c{50%{opacity:0}}'
+           '@media (prefers-reduced-motion:reduce){.pulse,.cur{animation:none}.dr{animation:none;stroke-dashoffset:0}}')
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}" role="img" '
+           f'aria-label="{esc(USER)}: {esc(BIO)} Contribution stats, activity heatmap, languages, stack and pinned projects.">\n'
+           f'<defs>{defs}</defs>\n<style>{css}</style>\n'
+           f'<rect width="{W}" height="{H}" rx="28" fill="#060606"/>\n' + "\n".join(o) + "\n</svg>\n")
     os.makedirs("assets", exist_ok=True)
     with open("assets/profile.svg", "w", encoding="utf8", newline="\n") as f:
         f.write(svg)

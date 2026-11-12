@@ -19,7 +19,7 @@ jobs:
         run: python3 scripts/profile.py
         env:
           GH_TOKEN: ${{ secrets.PROFILE_TOKEN || secrets.GITHUB_TOKEN }}
-          USERNAME: ${{ github.repository_owner }}
+          PROFILE_USER: ${{ github.repository_owner }}
 
       - name: Commit & Push
         run: |
