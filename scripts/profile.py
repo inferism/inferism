@@ -53,10 +53,10 @@ THEMES = {
         tones=["#f2f2f0", "#c4c4c4", "#9c9c9c", "#7a7a7a", "#5a5a5a", "#404040"],
     ),
     "light": dict(
-        bg="#f4f4f2", bar="#ffffff", card="#ffffff", line="#e0e0dc", rule="#ececea", grid="#ececea",
-        ink="#111111", sub="#3d3d3d", mute="#666666", faint="#8a8a8a", chip="#f3f3f0", chipLine="#dcdcd8",
+        bg="#e8e8e3", bar="#ffffff", card="#ffffff", line="#d2d2cc", rule="#d9d9d3", grid="#d9d9d3",
+        ink="#111111", sub="#3d3d3d", mute="#666666", faint="#74746d", chip="#f3f3f0", chipLine="#dcdcd8",
         acc="#9fd40f", accLine="#5d8c00", accText="#3f6212", areaOp=".45", tagBg="#111111", tagInk="#ffffff",
-        okBg="#effad0", okLine="#a6d62a", idleBg="#f3f3f0", idleLine="#dcdcd8", ring="#dcdcd8", idLine="#c8c8c2", idShadow=".16",
+        okBg="#effad0", okLine="#a6d62a", idleBg="#ffffff", idleLine="#d2d2cc", ring="#dcdcd8", idLine="#bdbdb6", idShadow=".22",
         tones=["#111111", "#3d3d3d", "#666666", "#8a8a8a", "#adadad", "#cdcdc9"],
     ),
 }
@@ -159,7 +159,7 @@ def avatar(cx, cy, r, cid):
 # ── student ID card ──
 # GitHub shows the 1000px card at ~690px, so source sizes here are ~1.45x what readers actually see.
 HEAT = {"dark": ["#171717", "#2e3a0c", "#56710f", "#93bd1c", "#d7ff3a"],
-        "light": ["#e9e9e5", "#dcf2a2", "#b3df45", "#80b20f", "#4a7500"]}
+        "light": ["#d6d6d0", "#dcf2a2", "#b3df45", "#80b20f", "#4a7500"]}
 ACC_INK = "#0a0a0a"  # text on the lime strip, both themes
 ID_FIELDS = [("NAME", USER), ("YEAR", "2nd"), ("PROGRAM", "BS InfoTech"), ("STATUS", "Alive")]
 
