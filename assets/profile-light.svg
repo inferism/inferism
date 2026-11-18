@@ -23,11 +23,11 @@
 <text x="56.0" y="412.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" fill="#3d3d3d" font-weight="400" text-anchor="start">apps and tools that'll make my</text>
 <text x="56.0" y="438.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="18" fill="#3d3d3d" font-weight="400" text-anchor="start">life easier</text>
 <line x1="56.0" y1="456.0" x2="368.0" y2="456.0" stroke="#d2d2cc" stroke-dasharray="4 5"/>
-<text x="56.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#111111" font-weight="800" text-anchor="start" letter-spacing="-1">1030</text>
+<text x="56.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#111111" font-weight="800" text-anchor="start" letter-spacing="-1">1032</text>
 <text x="56.0" y="526.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="14" fill="#666666" font-weight="400" text-anchor="start">contrib.</text>
-<text x="166.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#3f6212" font-weight="800" text-anchor="start" letter-spacing="-1">24</text>
+<text x="166.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#3f6212" font-weight="800" text-anchor="start" letter-spacing="-1">25</text>
 <text x="166.0" y="526.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="14" fill="#666666" font-weight="400" text-anchor="start">streak</text>
-<text x="276.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#111111" font-weight="800" text-anchor="start" letter-spacing="-1">24</text>
+<text x="276.0" y="502.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="30" fill="#111111" font-weight="800" text-anchor="start" letter-spacing="-1">25</text>
 <text x="276.0" y="526.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="14" fill="#666666" font-weight="400" text-anchor="start">longest</text>
 <rect x="56.0" y="556.0" width="0.8" height="46.0" rx="0" fill="#111111" opacity="0.35"/>
 <rect x="61.2" y="556.0" width="0.8" height="46.0" rx="0" fill="#111111" opacity="0.35"/>
@@ -88,8 +88,8 @@
 <rect x="347.2" y="556.0" width="2.1" height="46.0" rx="0" fill="#111111" opacity="1"/>
 <rect x="352.4" y="556.0" width="3.8" height="46.0" rx="0" fill="#111111" opacity="1"/>
 <rect x="357.6" y="556.0" width="1.7" height="46.0" rx="0" fill="#111111" opacity="1"/>
-<rect x="362.8" y="556.0" width="0.8" height="46.0" rx="0" fill="#111111" opacity="0.35"/>
-<text x="212.0" y="620.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="13" fill="#74746d" font-weight="600" text-anchor="middle" letter-spacing="1.4">INFERISM · LAST 60 DAYS · 1005</text>
+<rect x="362.8" y="556.0" width="1.3" height="46.0" rx="0" fill="#111111" opacity="1"/>
+<text x="212.0" y="620.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="13" fill="#74746d" font-weight="600" text-anchor="middle" letter-spacing="1.4">INFERISM · LAST 60 DAYS · 1007</text>
 <text x="432.0" y="64.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#74746d" font-weight="700" text-anchor="start" letter-spacing="2.2">TRANSCRIPT OF RECORDS</text>
 <text x="432.0" y="104.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="32" fill="#111111" font-weight="800" text-anchor="start" letter-spacing="-1">Projects this term</text>
 <text x="432.0" y="148.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="13" fill="#74746d" font-weight="700" text-anchor="start" letter-spacing="1.4">CODE</text>
@@ -105,9 +105,8 @@
 <text x="432.0" y="258.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#666666" font-weight="600" text-anchor="start">JA111</text>
 <text x="502.0" y="258.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="19" fill="#111111" font-weight="700" text-anchor="start">librarify</text>
 <text x="502.0" y="281.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#666666" font-weight="400" text-anchor="start">Turn any codebase into a browsable…</text>
-<rect x="876.0" y="243.0" width="92.0" height="30.0" rx="15" fill="#effad0" stroke="#a6d62a"/>
-<circle class="pulse" cx="894" cy="258" r="4" fill="#5d8c00"/>
-<text x="905.0" y="264.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#3f6212" font-weight="600" text-anchor="start">Active</text>
+<rect x="898.0" y="243.0" width="70.0" height="30.0" rx="15" fill="#ffffff" stroke="#d2d2cc"/>
+<text x="933.0" y="264.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#666666" font-weight="600" text-anchor="middle">Idle</text>
 <line x1="432.0" y1="294.0" x2="968.0" y2="294.0" stroke="#d9d9d3" />
 <text x="432.0" y="324.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#666666" font-weight="600" text-anchor="start">RU121</text>
 <text x="502.0" y="324.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="19" fill="#111111" font-weight="700" text-anchor="start">SpectaCLI</text>
@@ -133,7 +132,7 @@
 <rect x="898.0" y="507.0" width="70.0" height="30.0" rx="15" fill="#ffffff" stroke="#d2d2cc"/>
 <text x="933.0" y="528.0" font-family="'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="15" fill="#666666" font-weight="600" text-anchor="middle">Idle</text>
 <text x="432.0" y="594.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#74746d" font-weight="700" text-anchor="start" letter-spacing="2.2">ATTENDANCE</text>
-<text x="968.0" y="594.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#666666" font-weight="400" text-anchor="end">36/112 days present</text>
+<text x="968.0" y="594.0" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace" font-size="15" fill="#666666" font-weight="400" text-anchor="end">37/112 days present</text>
 <rect x="432.0" y="612.0" width="29.8" height="12.0" rx="3" fill="#d6d6d0" />
 <rect x="432.0" y="628.0" width="29.8" height="12.0" rx="3" fill="#dcf2a2" />
 <rect x="432.0" y="644.0" width="29.8" height="12.0" rx="3" fill="#dcf2a2" />
@@ -245,5 +244,5 @@
 <rect x="938.2" y="660.0" width="29.8" height="12.0" rx="3" fill="#b3df45" />
 <rect x="938.2" y="676.0" width="29.8" height="12.0" rx="3" fill="#4a7500" />
 <rect x="938.2" y="692.0" width="29.8" height="12.0" rx="3" fill="#b3df45" />
-<rect x="938.2" y="708.0" width="29.8" height="12.0" rx="3" fill="#d6d6d0" />
+<rect x="938.2" y="708.0" width="29.8" height="12.0" rx="3" fill="#dcf2a2" />
 </svg>
